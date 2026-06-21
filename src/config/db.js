@@ -35,3 +35,7 @@ async function connectDB(retryCount = 0) {
     process.exit(1);
   }
 }
+
+module.exports = {
+  connectDB,
+};

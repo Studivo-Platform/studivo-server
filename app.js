@@ -6,7 +6,7 @@ const mongoSanitize  = require('express-mongo-sanitize');
 
 const { env }          = require('./src/config/env');
 const { errorHandler } = require('./src/middleware/error.middleware');
-const authRoutes       = require('./src/routes/auth.routes');
+// const authRoutes       = require('./src/routes/auth.routes');
 
 const app = express();
 
@@ -38,7 +38,7 @@ app.get('/health', (req, res) => {
 });
 
 // API Routes
-app.use('/api/auth', authRoutes);
+// app.use('/api/auth', authRoutes);
 // More routes will be added here each sprint:
 // app.use('/api/requests',      requestRoutes);
 // app.use('/api/offers',        offerRoutes);
