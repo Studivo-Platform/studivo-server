@@ -180,6 +180,28 @@ const getMe = asyncHandler(async (req, res) => {
     return res.json(new ApiResponse(200, req.user));
 });
 
+// googleCallback — called by passport after Google redirects back
+// Generates our own JWT tokens and sends them to the frontend
+const googleCallback = asyncHandler(async (req, res) => {
+  // req.user is set by passport after successful Google auth
+    const user = req.user;
+
+    const accessToken  = generateAccessToken(user._id, user.role);
+    const refreshToken = generateRefreshToken(user._id);
+
+    // Store hashed refresh token
+    const hashedRefresh = require('crypto').createHash('sha256').update(refreshToken).digest('hex');
+    await User.findByIdAndUpdate(user._id, {
+        $push: { refreshTokens: hashedRefresh },
+    });
+
+    setRefreshTokenCookie(res, refreshToken);
+
+    // Redirect to frontend with accessToken as query param
+    // Frontend reads it once, stores in memory, then deletes from URL
+    res.redirect(`${process.env.CLIENT_URL}/auth/google/success?token=${accessToken}`);
+});
+
 module.exports = {
     register,
     login,
@@ -187,4 +209,5 @@ module.exports = {
     refreshToken,
     logout,
     getMe,
+    googleCallback,
 };

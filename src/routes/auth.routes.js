@@ -1,4 +1,5 @@
 const { Router }        = require('express');
+const passport          = require('../config/passport');
 const authController    = require('../controllers/auth.controller');
 const { validate }      = require('../middleware/validate.middleware');
 const { verifyJWT }     = require('../middleware/auth.middleware');
@@ -16,5 +17,17 @@ router.post('/refresh', authController.refreshToken);
 // Protected routes (requires valid JWT)
 router.post('/logout',  verifyJWT, authController.logout);
 router.get( '/me',      verifyJWT, authController.getMe);
+
+// Step 1: Redirect user to Google login page
+// Scope: we request email and profile (name + photo)
+router.get('/google',
+  passport.authenticate('google', { scope: ['email', 'profile'], session: false })
+);
+
+// Step 2: Google redirects back here after user approves
+router.get('/google/callback',
+  passport.authenticate('google', { failureRedirect: `${process.env.CLIENT_URL}/login?error=google_failed`, session: false }),
+  authController.googleCallback
+);
 
 module.exports = router;

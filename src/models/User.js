@@ -64,6 +64,12 @@ const userSchema = new mongoose.Schema({
         select: false,
     },
 
+    googleId: {
+        type:   String,
+        default: null,
+        select: false,
+    },
+
     refreshTokens: {
         type:   [String],
         select: false,

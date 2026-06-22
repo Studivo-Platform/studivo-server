@@ -1,10 +1,11 @@
-const express        = require('express');
-const cors           = require('cors');
-const helmet         = require('helmet');
-const morgan         = require('morgan');
-const mongoSanitize  = require('express-mongo-sanitize');
+const express          = require('express');
+const cors             = require('cors');
+const helmet           = require('helmet');
+const morgan           = require('morgan');
+const mongoSanitize    = require('express-mongo-sanitize');
 
 const { env }          = require('./src/config/env');
+const passport         = require('./src/config/passport');
 const { errorHandler } = require('./src/middleware/error.middleware');
 const authRoutes       = require('./src/routes/auth.routes');
 
@@ -17,6 +18,9 @@ app.use(cors({
   credentials: true,                       // Allow cookies (for refresh token)
 }));
 app.use(mongoSanitize());                  // Strip MongoDB operators from user input
+
+// Authentication Middleware
+app.use(passport.initialize());            // No sessions — we use JWT
 
 // Request Parsing
 app.use(express.json({ limit: '10mb' }));           // Parse JSON bodies
