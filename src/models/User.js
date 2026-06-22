@@ -27,17 +27,6 @@ const userSchema = new mongoose.Schema({
         minlength: [8, 'Password must be at least 8 characters'],
         select:    false,
     },
-    confirmedPassword: {
-        type:      String,
-        required:  [true, 'Please confirm your password'],
-        validate: {
-            validator: function (value) {
-                return value === this.password;
-            },
-            message: 'Passwords do not match',
-        },
-        select: false,
-    },
 
     role: {
         type:    String,
@@ -105,7 +94,6 @@ userSchema.pre('save', async function () {
 
     const SALT_ROUNDS = 12;
     this.password = await bcrypt.hash(this.password, SALT_ROUNDS);
-    this.confirmPassword = undefined;
 });
 
 // Instance Methods
@@ -120,7 +108,6 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
 userSchema.methods.toJSON = function () {
     const obj = this.toObject();
     delete obj.password;
-    delete obj.confirmedPassword;
     delete obj.verificationToken;
     delete obj.refreshTokens;
     delete obj.__v;
