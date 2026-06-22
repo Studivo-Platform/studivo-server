@@ -1,4 +1,3 @@
-// src/controllers/auth.controller.js
 const crypto                    = require('crypto');
 const jwt                       = require('jsonwebtoken');
 const { User }                  = require('../models/User');
@@ -61,8 +60,7 @@ const register = asyncHandler(async (req, res) => {
     });
 
     // Send verification email (don't await — let it happen in background)
-    sendVerificationEmgit add src/controllers/auth.controller.js
-ail(email, name, verificationToken)
+    sendVerificationEmail(email, name, verificationToken)
     .catch((err) =>
         console.error('Failed to send verification email:', err.message)
     );
