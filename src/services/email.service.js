@@ -3,7 +3,7 @@ const { env } = require('../config/env');
 
 sgMail.setApiKey(env.SENDGRID_API_KEY);
 
-export async function sendVerificationEmail(to, name, token) {
+async function sendVerificationEmail(to, name, token) {
     const verificationUrl = `${env.CLIENT_URL}/verify-email?token=${token}`;
 
     const msg = {
@@ -32,7 +32,8 @@ export async function sendVerificationEmail(to, name, token) {
     await sgMail.send(msg);
 }
 
-    export async function sendPasswordResetEmail(to, name, token) {
+
+async function sendPasswordResetEmail(to, name, token) {
     const resetUrl = `${env.CLIENT_URL}/reset-password?token=${token}`;
 
     const msg = {
@@ -57,3 +58,8 @@ export async function sendVerificationEmail(to, name, token) {
 
     await sgMail.send(msg);
 }
+
+module.exports = {
+    sendVerificationEmail,
+    sendPasswordResetEmail,
+};

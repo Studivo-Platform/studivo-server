@@ -32,3 +32,9 @@ const authLimiter = rateLimit({
         message: 'Too many authentication attempts. Please try again in 15 minutes.',
     },
 });
+
+module.exports = {
+    globalLimiter,
+    aiLimiter,
+    authLimiter,
+};

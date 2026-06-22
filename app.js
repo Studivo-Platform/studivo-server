@@ -6,7 +6,7 @@ const mongoSanitize  = require('express-mongo-sanitize');
 
 const { env }          = require('./src/config/env');
 const { errorHandler } = require('./src/middleware/error.middleware');
-// const authRoutes       = require('./src/routes/auth.routes');
+const authRoutes       = require('./src/routes/auth.routes');
 
 const app = express();
 
@@ -29,16 +29,16 @@ if (env.NODE_ENV === 'development') {
 
 // Health Check
 app.get('/health', (req, res) => {
-  res.json({
-    success: true,
-    message: 'Studivo API is running',
-    environment: env.NODE_ENV,
-    timestamp:   new Date().toISOString(),
-  });
+    res.json({
+        success: true,
+        message: 'Studivo API is running',
+        environment: env.NODE_ENV,
+        timestamp:   new Date().toISOString(),
+    });
 });
 
 // API Routes
-// app.use('/api/auth', authRoutes);
+app.use('/api/auth', authRoutes);
 // More routes will be added here each sprint:
 // app.use('/api/requests',      requestRoutes);
 // app.use('/api/offers',        offerRoutes);
@@ -49,10 +49,10 @@ app.get('/health', (req, res) => {
 
 // 404 Handler 
 app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    message: `Route ${req.method} ${req.path} not found`,
-  });
+    res.status(404).json({
+        success: false,
+        message: `Route ${req.method} ${req.path} not found`,
+    });
 });
 
 // Global Error Handler (must be last)
