@@ -37,6 +37,11 @@ const envSchema = z.object({
   RATE_LIMIT_WINDOW_MS: z.string().default('900000').transform(Number),
   RATE_LIMIT_MAX:       z.string().default('100').transform(Number),
   AI_RATE_LIMIT_MAX:    z.string().default('10').transform(Number),
+
+  // Add inside envSchema object:
+  GOOGLE_CLIENT_ID:     z.string().min(1, { message: 'GOOGLE_CLIENT_ID is required' }),
+  GOOGLE_CLIENT_SECRET: z.string().min(1, { message: 'GOOGLE_CLIENT_SECRET is required' }),
+  GOOGLE_CALLBACK_URL:  z.string().url(   { message: 'GOOGLE_CALLBACK_URL must be a valid URL' }),
 });
 
 const parsed = envSchema.safeParse(process.env);
