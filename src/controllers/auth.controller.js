@@ -174,8 +174,17 @@ const logout = asyncHandler(async (req, res) => {
     return res.json(new ApiResponse(200, null, 'Logged out successfully'));
 });
 
-// ── me ────────────────────────────────────────────────
+// me
 const getMe = asyncHandler(async (req, res) => {
     // req.user is set by auth.middleware.js
     return res.json(new ApiResponse(200, req.user));
 });
+
+module.exports = {
+    register,
+    login,
+    verifyEmail,
+    refreshToken,
+    logout,
+    getMe,
+};
