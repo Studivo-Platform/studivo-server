@@ -66,6 +66,7 @@ const errorHandler = (err, req, res, next) => {
         success: false,
         statusCode,
         message,
+        ...(err.errors && { errors: err.errors }), 
         ...(env.NODE_ENV === 'development' && { stack: err.stack }), // only return stack in development
     });
 };

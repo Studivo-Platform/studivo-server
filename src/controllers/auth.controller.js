@@ -67,7 +67,7 @@ const register = asyncHandler(async (req, res) => {
 
     return res
         .status(201)
-        .json(new ApiResponse(201, { id: user._id, email: user.email }, 'Account created. Please check your email to verify.'));
+        .json(new ApiResponse(201, { id: user._id, name: user.name, email: user.email }, 'Account created. Please check your email to verify.'));
     });
 
 // login

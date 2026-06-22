@@ -17,7 +17,7 @@ app.use(cors({
   origin:      env.CLIENT_URL,             // Only allow our Next.js frontend
   credentials: true,                       // Allow cookies (for refresh token)
 }));
-app.use(mongoSanitize());                  // Strip MongoDB operators from user input
+// app.use(mongoSanitize());                  // Strip MongoDB operators from user input
 
 // Authentication Middleware
 app.use(passport.initialize());            // No sessions — we use JWT
@@ -25,6 +25,17 @@ app.use(passport.initialize());            // No sessions — we use JWT
 // Request Parsing
 app.use(express.json({ limit: '10mb' }));           // Parse JSON bodies
 app.use(express.urlencoded({ extended: true }));     // Parse form bodies
+
+// Sanitize user input after request parsing. Express 5 exposes a read-only getter for
+// req.query, so we sanitize the existing object in place instead of reassigning it.
+app.use((req, res, next) => {
+    ['body', 'params', 'headers', 'query'].forEach((key) => {
+        if (req[key] && typeof req[key] === 'object') {
+            mongoSanitize.sanitize(req[key]);
+        }
+    });
+    next();
+});
 
 // Logging
 if (env.NODE_ENV === 'development') {

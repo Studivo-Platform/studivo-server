@@ -27,6 +27,17 @@ const userSchema = new mongoose.Schema({
         minlength: [8, 'Password must be at least 8 characters'],
         select:    false,
     },
+    confirmedPassword: {
+        type:      String,
+        required:  [true, 'Please confirm your password'],
+        validate: {
+            validator: function (value) {
+                return value === this.password;
+            },
+            message: 'Passwords do not match',
+        },
+        select: false,
+    },
 
     role: {
         type:    String,
@@ -85,14 +96,16 @@ userSchema.index({ role: 1 });   // Faster queries when filtering by role
 
 //  Pre-save Hook
 // Runs before every .save() call — hashes password if it was changed
-userSchema.pre('save', async function (next) {
+userSchema.pre('save', async function () {
     // Only hash if password field was modified (not on every update)
-    if (!this.isModified('password'))
-        return next();
+
+    if (!this.isModified('password')) {
+        return;
+    }
 
     const SALT_ROUNDS = 12;
     this.password = await bcrypt.hash(this.password, SALT_ROUNDS);
-    next();
+    this.confirmPassword = undefined;
 });
 
 // Instance Methods
@@ -100,12 +113,14 @@ userSchema.pre('save', async function (next) {
 userSchema.methods.comparePassword = async function (candidatePassword) {
     // 'this.password' is not selected by default, so we need to explicitly select it
     return bcrypt.compare(candidatePassword, this.password);
+
 };
 
 // toJSON: remove sensitive fields when converting to JSON
 userSchema.methods.toJSON = function () {
     const obj = this.toObject();
     delete obj.password;
+    delete obj.confirmedPassword;
     delete obj.verificationToken;
     delete obj.refreshTokens;
     delete obj.__v;

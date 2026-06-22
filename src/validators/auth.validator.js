@@ -20,6 +20,10 @@ const registerSchema = z.object({
         'Password must contain at least one uppercase letter, one lowercase letter, and one number'
         ),
 
+    confirmPassword: z
+        .string({ required_error: 'Confirm password is required' })
+        .min(8, 'Confirm password must be at least 8 characters'),
+
     role: z
         .enum(['student', 'seller'], {
         errorMap: () => ({ message: 'Role must be student or seller' }),
@@ -28,6 +32,10 @@ const registerSchema = z.object({
 
     university: z.string().trim().optional(),
     phone:      z.string().trim().optional(),
+
+}).refine((data) => data.password === data.confirmPassword, {
+        message: "Passwords do not match",
+        path: ["confirmPassword"],
 });
 
 const loginSchema = z.object({
