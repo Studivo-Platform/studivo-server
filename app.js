@@ -8,6 +8,7 @@ const { env }          = require('./src/config/env');
 const passport         = require('./src/config/passport');
 const { errorHandler } = require('./src/middleware/error.middleware');
 const authRoutes       = require('./src/routes/auth.routes');
+const requestRoutes    = require('./src/routes/request.routes');
 
 const app = express();
 
@@ -54,8 +55,9 @@ app.get('/health', (req, res) => {
 
 // API Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/requests', requestRoutes);
+
 // More routes will be added here each sprint:
-// app.use('/api/requests',      requestRoutes);
 // app.use('/api/offers',        offerRoutes);
 // app.use('/api/search',        searchRoutes);
 // app.use('/api/conversations', chatRoutes);
