@@ -1,7 +1,7 @@
 require('dotenv').config();
 const { Worker } = require('bullmq');
-const { redis }  = require('../src/config/redis');
-const { connectDB } = require('../src/config/db');
+const { redis }  = require('../config/redis');
+const { connectDB } = require('../config/db');
 
 const connection = { host: redis.options.host, port: redis.options.port };
 

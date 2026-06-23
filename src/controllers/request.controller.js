@@ -97,7 +97,7 @@ const closeRequest = asyncHandler(async (req, res) => {
   if (!request) throw new ApiError(404, 'Request not found');
 
   // Only the owner can close their request
-  if (request.userId.toString() !== req.user._id.toString()) {
+  if (request.userId._id.toString() !== req.user._id.toString()) {
     throw new ApiError(403, 'You can only close your own requests');
   }
 

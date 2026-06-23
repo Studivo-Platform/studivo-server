@@ -27,7 +27,7 @@ const addScrapeJob = async (requestId, parsedData) => {
     { requestId: requestId.toString(), parsedData },
     {
       // Job ID based on requestId — prevents duplicate jobs for same request
-      jobId: `scrape:${requestId}`,
+      jobId: `scrapeForRequest-${requestId}`,
     }
   );
 
