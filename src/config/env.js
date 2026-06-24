@@ -42,6 +42,18 @@ const envSchema = z.object({
   GOOGLE_CLIENT_ID:     z.string().min(1, { message: 'GOOGLE_CLIENT_ID is required' }),
   GOOGLE_CLIENT_SECRET: z.string().min(1, { message: 'GOOGLE_CLIENT_SECRET is required' }),
   GOOGLE_CALLBACK_URL:  z.string().url(   { message: 'GOOGLE_CALLBACK_URL must be a valid URL' }),
+
+  // Amazon
+AMAZON_ACCESS_KEY:  z.string().min(1, { message: 'AMAZON_ACCESS_KEY is required' }),
+AMAZON_SECRET_KEY:  z.string().min(1, { message: 'AMAZON_SECRET_KEY is required' }),
+AMAZON_PARTNER_TAG: z.string().default('studivo-21'),
+AMAZON_HOST:        z.string().default('webservices.amazon.eg'),
+AMAZON_REGION:      z.string().default('us-east-1'),
+
+// Noon
+NOON_AFFILIATE_ID: z.string().min(1, { message: 'NOON_AFFILIATE_ID is required' }),
+NOON_BASE_URL:     z.string().default('https://www.noon.com'),
+
 });
 
 const parsed = envSchema.safeParse(process.env);
