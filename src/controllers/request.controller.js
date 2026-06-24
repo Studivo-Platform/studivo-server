@@ -4,6 +4,8 @@ const { asyncHandler }  = require('../utils/asyncHandler');
 const { parseRequest }  = require('../services/ai.service');
 const { addScrapeJob }  = require('../services/queue.service');
 const requestRepo       = require('../repositories/request.repository');
+const offerRepo        = require('../repositories/offer.repository');
+const scrapedRepo      = require('../repositories/scrapedResult.repository');
 
 //  POST /api/requests
 // Student creates a new request.
@@ -67,14 +69,28 @@ const getMyRequests = asyncHandler(async (req, res) => {
 // Get single request with full details
 // Both students and sellers can access — but we increment views
 const getById = asyncHandler(async (req, res) => {
-  const request = await requestRepo.findById(req.params.id);
+  const { id } = req.params;
 
-  if (!request) throw new ApiError(404, 'Request not found');
+  // Fetch request + offers + scraped results in parallel
+  const [request, offers, scrapedResults] = await Promise.all([
+    requestRepo.findById(id),
+    offerRepo.findByRequest(id),
+    scrapedRepo.findByRequest(id),
+  ]);
 
-  // Increment view count in background (don't block the response)
-  requestRepo.incrementViews(req.params.id).catch(() => {});
+  if (!request)
+    throw new ApiError(404, 'Request not found');
 
-  return res.json(new ApiResponse(200, request));
+  // Increment view count in background
+  requestRepo.incrementViews(id).catch(() => {});
+
+  return res.json(
+    new ApiResponse(200, {
+      request,
+      offers,          // Local seller offers
+      scrapedResults,  // Amazon / Noon / OLX results
+    })
+  );
 });
 
 // GET /api/requests
