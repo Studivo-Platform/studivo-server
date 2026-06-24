@@ -1,44 +1,61 @@
 require('dotenv').config();
-const { Worker } = require('bullmq');
-const { redis }  = require('../config/redis');
+const { Worker }    = require('bullmq');
+const { redis }     = require('../config/redis');
 const { connectDB } = require('../config/db');
+const { searchAmazon, searchNoon }    = require('../services/affiliate.service');
+const { bulkCreate, deleteByRequest } = require('../repositories/scrapedResult.repository');
 
 const connection = { host: redis.options.host, port: redis.options.port };
 
-// Worker processor — runs for each job in the scrapeQueue
-// In Sprint 3 this will: call Amazon API + Noon API + Playwright → save ScrapedResults
 const processScrapeJob = async (job) => {
   const { requestId, parsedData } = job.data;
 
-  console.log(`[Worker] Processing scrape job ${job.id} for request ${requestId}`);
-  console.log(`[Worker] Category: ${parsedData.category}, Keywords:`, parsedData.keywords);
+  console.log(`[Worker] Scraping for request ${requestId} — category: ${parsedData.category}`);
 
-  // TODO Sprint 3: call affiliate.service.js → save ScrapedResult documents
-  // For now, just log and resolve
-  return { status: 'placeholder', requestId };
+  // Run Amazon and Noon searches in parallel
+  const [amazonResults, noonResults] = await Promise.all([
+    searchAmazon(parsedData),
+    searchNoon(parsedData),
+  ]);
+
+  const allResults = [...amazonResults, ...noonResults];
+
+  if (!allResults.length) {
+    console.log(`[Worker] No results found for request ${requestId}`);
+    return { requestId, saved: 0 };
+  }
+
+  // Add requestId to each result before saving
+  const toSave = allResults.map((r) => ({ ...r, requestId }));
+
+  // Delete old results for this request before inserting new ones
+  await deleteByRequest(requestId);
+  await bulkCreate(toSave);
+
+  console.log(`[Worker] Saved ${toSave.length} results for request ${requestId}`);
+  return { requestId, saved: toSave.length };
 };
 
-// Start worker
 async function startWorker() {
   await connectDB();
 
   const worker = new Worker('scrape', processScrapeJob, {
     connection,
-    concurrency: 3,  // Process up to 3 jobs simultaneously
+    concurrency: 3,
   });
 
   worker.on('completed', (job, result) => {
-    console.log(`[Worker] Job ${job.id} completed:`, result);
+    console.log(`[Worker] Job ${job.id} done:`, result);
   });
 
   worker.on('failed', (job, error) => {
-    console.error(`[Worker] Job ${job.id} failed:`, error.message);
+    console.error(`[Worker] Job ${job.id} failed (attempt ${job.attemptsMade}):`, error.message);
   });
 
-  console.log('[Worker] Scrape worker started. Waiting for jobs...');
+  console.log('[Worker] Scrape worker started — waiting for jobs...');
 }
 
 startWorker().catch((err) => {
-  console.error('[Worker] Failed to start:', err.message);
+  console.error('[Worker] Startup failed:', err.message);
   process.exit(1);
 });
