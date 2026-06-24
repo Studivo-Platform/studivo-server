@@ -3,6 +3,7 @@ const { ApiResponse }  = require('../utils/ApiResponse');
 const { asyncHandler } = require('../utils/asyncHandler');
 const offerRepo        = require('../repositories/offer.repository');
 const requestRepo      = require('../repositories/request.repository');
+const cloudinaryService = require('../services/cloudinary.service');
 
 const MAX_OFFERS_PER_SELLER = 3;
 
@@ -29,8 +30,17 @@ const createOffer = asyncHandler(async (req, res) => {
     throw new ApiError(400, `You can only submit ${MAX_OFFERS_PER_SELLER} offers per request`);
   }
 
-  // 4. Handle uploaded images (URLs from Cloudinary via upload.middleware.js)
-  const images = req.files ? req.files.map((f) => f.path) : [];
+  const uploadedImages = await cloudinaryService.uploadImages(
+    req.files ?? [],
+    {
+      folder: 'studivo/offers',
+    }
+  );
+
+  const images = uploadedImages.map((img) => ({
+    url: img.url,
+    publicId: img.publicId,
+  }));
 
   // 5. Create the offer
   const offer = await offerRepo.create({

@@ -6,7 +6,8 @@ const createOfferSchema = z.object({
     .regex(/^[a-f\d]{24}$/i, 'Invalid request ID format'),
 
   price: z
-    .number({ required_error: 'Price is required' })
+    .coerce.number({ invalid_type_error: 'Price must be a number' })
+    // .number({ required_error: 'Price is required' })
     .positive('Price must be greater than 0'),
 
   description: z

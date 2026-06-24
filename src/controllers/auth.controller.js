@@ -75,7 +75,7 @@ const login = asyncHandler(async (req, res) => {
     const { email, password } = req.body;
 
     // Select password explicitly since it's select: false in schema
-    const user = await User.findOne({ email }).select('+password +refreshTokens');
+    const user = await User.findOne({ email }).select('+password +refreshTokens +verificationToken');
 
     if (!user || !(await user.comparePassword(password))) {
         // Same error for both cases to prevent email enumeration
@@ -87,7 +87,13 @@ const login = asyncHandler(async (req, res) => {
     }
 
     if (!user.isVerified) {
-        throw new ApiError(403, 'Your account has not been verified. Please check your email.');
+        console.log(`User ${user._id} is not verified yet (verification token: ${user.verificationToken})`);
+        // Send verification email (don't await — let it happen in background)
+        sendVerificationEmail(user.email, user.name, user.verificationToken)
+            .catch((err) =>
+                console.error('Failed to send verification email:', err.message)
+            );
+        throw new ApiError(403, 'Your account is not verified. Please check your email.');
     }
 
     // Generate tokens

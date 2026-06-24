@@ -30,15 +30,12 @@ const offerSchema = new mongoose.Schema(
       trim: true,
     },
 
-    // Cloudinary URLs — uploaded via upload.middleware.js
-    images: {
-      type: [String],
-      default: [],
-      validate: {
-        validator: (arr) => arr.length <= 5,
-        message: "Maximum 5 images allowed per offer",
+    images: [
+      {
+        url: String,
+        publicId: String,
       },
-    },
+    ],
 
     status: {
       type: String,

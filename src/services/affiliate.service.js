@@ -13,6 +13,7 @@ const amazonApi = new ProductAdvertisingAPIv1.DefaultApi();
 // Build affiliate URL with partner tag
 // Every click through this URL earns commission if user purchases
 const buildAmazonAffiliateUrl = (asin) => {
+  // `https://${env.AMAZON_HOST}?&linkCode=ll2&tag=${env.AMAZON_PARTNER_TAG}&linkId=fe244ff313175e6c8cb92b630d419317&ref_=as_li_ss_tl`;
   return `https://${env.AMAZON_HOST}/dp/${asin}?tag=${env.AMAZON_PARTNER_TAG}`;
 };
 
@@ -106,7 +107,7 @@ const searchNoon = async (parsedData) => {
         price:        parsedData.budget?.max || null,
         originalUrl:  searchUrl,
         affiliateUrl: searchUrl,
-        imageUrl:     'https://f.nooncdn.com/s/app/com/noon/images/noon-logo.svg',
+        imageUrl:     'https://f.nooncdn.com/s/app/com/noon/design-system/logos/revamp-logo-en-smaller.svg',
         metadata:     { type: 'search_link', keywords },
       },
     ];
