@@ -1,9 +1,12 @@
-const { ApiError }     = require('../utils/ApiError');
-const { ApiResponse }  = require('../utils/ApiResponse');
-const { asyncHandler } = require('../utils/asyncHandler');
-const offerRepo        = require('../repositories/offer.repository');
-const requestRepo      = require('../repositories/request.repository');
+const { ApiError }      = require('../utils/ApiError');
+const { ApiResponse }   = require('../utils/ApiResponse');
+const { asyncHandler }  = require('../utils/asyncHandler');
+const offerRepo         = require('../repositories/offer.repository');
+const requestRepo       = require('../repositories/request.repository');
 const cloudinaryService = require('../services/cloudinary.service');
+const { getIO }         = require('../socket/index');
+const { emitNewOffer }  = require('../socket/events/request.events');
+
 
 const MAX_OFFERS_PER_SELLER = 3;
 
@@ -53,13 +56,17 @@ const createOffer = asyncHandler(async (req, res) => {
   });
 
   // 6. Notify the student via Socket.IO
-  if (req.io) {
-    req.io.to(requestId.toString()).emit('new_offer', {
-      offerId:    offer._id,
+  try {
+    const io = getIO();
+    emitNewOffer(io, {
       requestId,
+      offerId:       offer._id,
       price,
-      sellerName: req.user.name,
+      sellerName:    req.user.name,
+      studentUserId: request.userId.toString(),
     });
+  } catch {
+    // Skip if socket not initialized
   }
 
   return res

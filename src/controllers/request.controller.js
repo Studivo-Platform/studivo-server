@@ -4,9 +4,9 @@ const { asyncHandler }  = require('../utils/asyncHandler');
 const { parseRequest }  = require('../services/ai.service');
 const { addScrapeJob }  = require('../services/queue.service');
 const requestRepo       = require('../repositories/request.repository');
-const offerRepo        = require('../repositories/offer.repository');
-const scrapedRepo      = require('../repositories/scrapedResult.repository');
-
+const offerRepo         = require('../repositories/offer.repository');
+const scrapedRepo       = require('../repositories/scrapedResult.repository');
+const { getIO }         = require('../socket/index');
 //  POST /api/requests
 // Student creates a new request.
 // Flow: validate → AI parse → save → queue scrape job → respond
@@ -36,14 +36,16 @@ const createRequest = asyncHandler(async (req, res) => {
   );
 
   // 5. Emit Socket.IO event to notify sellers in this category
-  // req.io is attached in server.js
-  if (req.io) {
-    req.io.to(parsedData.category).emit('new_request', {
+  try {
+    const io = getIO();
+    emitNewRequest(io, {
       requestId: request._id,
       category:  parsedData.category,
       summary:   rawText.slice(0, 100),
       budget:    parsedData.budget,
     });
+  } catch {
+    // Socket not initialized yet — skip emit (happens in tests)
   }
 
   return res.status(201).json(
