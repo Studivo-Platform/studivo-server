@@ -3,6 +3,7 @@ const app              = require('./app');
 const { env }          = require('./src/config/env');
 const { connectDB }    = require('./src/config/db');
 const { connectRedis } = require('./src/config/redis');
+const { initSocket }   = require('./src/socket/index');
 
 async function startServer() {
     try {
@@ -16,13 +17,21 @@ async function startServer() {
         // 3. Connect to Redis
         await connectRedis();
 
-        // 4. Create HTTP server (we'll attach Socket.IO to it in Sprint 4)
+        // Create HTTP server — Socket.IO needs access to it
         const httpServer = createServer(app);
+
+        // Initialize Socket.IO and attach to HTTP server
+        const io = initSocket(httpServer);
+
+        // Make io available on every request via req.io
+        // This lets controllers emit events without importing getIO
+        app.set('io', io);
 
         // 5. Start listening
         httpServer.listen(env.PORT, () => {
             console.log(`\n Server running on http://localhost:${env.PORT}`);
             console.log(`   Health check: http://localhost:${env.PORT}/health\n`);
+            console.log(`   Socket.IO:    ws://localhost:${env.PORT}\n`);
         });
 
         // 6. Graceful shutdown — clean up connections on SIGTERM/SIGINT
