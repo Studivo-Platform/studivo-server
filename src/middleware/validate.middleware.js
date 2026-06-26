@@ -21,4 +21,18 @@ const validate = (schema) => (req, res, next) => {
     next();
 };
 
-module.exports = { validate };
+// Validate req.query instead of req.body
+const validateQuery = (schema) => (req, res, next) => {
+  const result = schema.safeParse(req.query);
+  if (!result.success) {
+    const errors = result.error.errors.map((err) => ({
+      field:   err.path.join('.'),
+      message: err.message,
+    }));
+    return next(new ApiError(422, 'Invalid query parameters', errors));
+  }
+  req.query = result.data;
+  next();
+};
+
+module.exports = { validate, validateQuery };
