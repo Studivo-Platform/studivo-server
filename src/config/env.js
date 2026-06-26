@@ -20,8 +20,13 @@ const envSchema = z.object({
   JWT_REFRESH_EXPIRES: z.string().default('7d'),
 
   // OpenAI
-  OPENAI_API_KEY: z.string().startsWith('sk-', { message: 'OPENAI_API_KEY must start with sk-' }),
-  OPENAI_MODEL:   z.string().default('gpt-4o-mini'),
+  // OPENAI_API_KEY: z.string().startsWith('sk-', { message: 'OPENAI_API_KEY must start with sk-' }),
+  // OPENAI_MODEL:   z.string().default('gpt-4o-mini'),
+  // AI_CACHE_TTL:   z.string().default('86400').transform(Number),
+
+  // Gemini AI
+  GEMINI_API_KEY: z.string().startsWith('AQ.Ab8RN6', { message: 'GEMINI_API_KEY must start with AQ.Ab8RN6' }),
+  GEMINI_MODEL:   z.string().default('gemini-1.5-flash'),
   AI_CACHE_TTL:   z.string().default('86400').transform(Number),
 
   // Cloudinary
@@ -44,15 +49,12 @@ const envSchema = z.object({
   GOOGLE_CALLBACK_URL:  z.string().url(   { message: 'GOOGLE_CALLBACK_URL must be a valid URL' }),
 
   // Amazon
-AMAZON_ACCESS_KEY:  z.string().min(1, { message: 'AMAZON_ACCESS_KEY is required' }),
-AMAZON_SECRET_KEY:  z.string().min(1, { message: 'AMAZON_SECRET_KEY is required' }),
-AMAZON_PARTNER_TAG: z.string().default('studivo-21'),
-AMAZON_HOST:        z.string().default('webservices.amazon.eg'),
-AMAZON_REGION:      z.string().default('us-east-1'),
+  AMAZON_PARTNER_TAG: z.string().default('studivo0b-21'),
+  AMAZON_HOST:        z.string().default('www.amazon.eg'),
 
-// Noon
-NOON_AFFILIATE_ID: z.string().min(1, { message: 'NOON_AFFILIATE_ID is required' }),
-NOON_BASE_URL:     z.string().default('https://www.noon.com'),
+  // Noon
+  NOON_AFFILIATE_ID: z.string().min(1, { message: 'NOON_AFFILIATE_ID is required' }),
+  NOON_BASE_URL:     z.string().default('https://www.noon.com'),
 
 });
 

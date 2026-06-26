@@ -1,12 +1,15 @@
-const { OpenAI } = require('openai');
+// const { OpenAI } = require('openai');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { redis }  = require('../config/redis');
 const { env }    = require('../config/env');
 const { hashText } = require('../utils/hashText');
 const { normalizeText } = require('../utils/normalizeText');
 const { fallbackEngine } = require('./fallback.engine');
 
-const openai = new OpenAI({ apiKey: env.OPENAI_API_KEY });
+// const openai = new OpenAI({ apiKey: env.OPENAI_API_KEY });
 
+const genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY);
+const model = genAI.getGenerativeModel({ model: env.GEMINI_MODEL });
 // Prompt
 // The prompt is the most important part — it tells GPT exactly what to return.
 // We use a strict JSON-only instruction to avoid any extra text in the response.
@@ -137,34 +140,30 @@ const setCachedParse = async (rawText, parsedData) => {
 
 // Main parse function
 const parseRequest = async (rawText) => {
-  // 1. Check cache first — same request within 24h → no OpenAI call
+  // 1. Check cache first — same request within 24h → no AI call
   const cached = await getCachedParse(rawText);
   if (cached) {
     console.log('[AI] Cache hit for request:', rawText.slice(0, 50));
     return { parsedData: cached, fromCache: true };
   }
 
-  // 2. Call OpenAI
+  // 2. Call Gemini
   try {
-    const completion = await openai.chat.completions.create({
-      model:       env.OPENAI_MODEL,
-      messages:    [{ role: 'user', content: buildParsePrompt(rawText) }],
-      temperature: 0,          // 0 = deterministic, no creativity needed
-      max_tokens:  300,        // JSON response is small, cap to save cost
-    });
-
-    const raw         = completion.choices[0].message.content.trim();
-    const parsedData  = JSON.parse(raw);
+    const result   = await model.generateContent(buildParsePrompt(rawText));
+    const text     = result.response.text().trim();
+    
+    const cleaned  = text.replace(/```json|```/g, '').trim();
+    const parsedData = JSON.parse(cleaned);
 
     // 3. Cache the result
     await setCachedParse(rawText, parsedData);
 
-    console.log('[AI] OpenAI parsed:', rawText.slice(0, 50), '→', parsedData.category);
+    console.log('[AI] Gemini parsed:', rawText.slice(0, 50), '→', parsedData.category);
     return { parsedData, fromCache: false };
 
   } catch (error) {
-    // 4. Fallback if OpenAI fails (network error, quota exceeded, etc.)
-    console.error('[AI] OpenAI failed, using fallback engine:', error.message);
+    // 4. Fallback if Gemini fails (network error, quota exceeded, etc.)
+    console.error('[AI] Gemini failed, using fallback engine:', error.message);
     const parsedData = fallbackEngine(rawText);
 
     return {

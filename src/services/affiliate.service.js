@@ -1,81 +1,29 @@
-const ProductAdvertisingAPIv1 = require('paapi5-nodejs-sdk');
 const { env } = require('../config/env');
 
-// Amazon PA-API v5 Setup
-const amazonClient = ProductAdvertisingAPIv1.ApiClient.instance;
-amazonClient.accessKey  = env.AMAZON_ACCESS_KEY;
-amazonClient.secretKey  = env.AMAZON_SECRET_KEY;
-amazonClient.host       = env.AMAZON_HOST;
-amazonClient.region     = env.AMAZON_REGION;
-
-const amazonApi = new ProductAdvertisingAPIv1.DefaultApi();
-
-// Build affiliate URL with partner tag
-// Every click through this URL earns commission if user purchases
-const buildAmazonAffiliateUrl = (asin) => {
-  // `https://${env.AMAZON_HOST}?&linkCode=ll2&tag=${env.AMAZON_PARTNER_TAG}&linkId=fe244ff313175e6c8cb92b630d419317&ref_=as_li_ss_tl`;
-  return `https://${env.AMAZON_HOST}/dp/${asin}?tag=${env.AMAZON_PARTNER_TAG}`;
+// Build Amazon search URL
+const buildAmazonSearchUrl = (keywords, partnerTag) => {
+  const encoded = encodeURIComponent(keywords);
+  return `https://${env.AMAZON_HOST}/s?k=${encoded}&linkCode=ll2&tag=${env.AMAZON_PARTNER_TAG}&linkId=fe244ff313175e6c8cb92b630d419317&ref_=as_li_ss_tl`;
 };
 
 // Search Amazon for products matching parsed request data
 const searchAmazon = async (parsedData) => {
   try {
-    // Map our categories to Amazon search indexes
-    const searchIndexMap = {
-      electronics: 'Electronics',
-      books:       'Books',
-      housing:     'All',            // Amazon doesn't have housing
-      services:    'All',
-      other:       'All',
-    };
-
-    const searchIndex = searchIndexMap[parsedData.category] || 'All';
-
-    // Build search keywords from parsed specs + original keywords
-    const keywords = [
-      ...parsedData.keywords.slice(0, 3),
-      parsedData.subCategory,
-    ]
-      .filter(Boolean)
-      .join(' ')
-      .trim();
-
+    const keywords = parsedData.keywords.slice(0, 3).join(' ');
     if (!keywords) return [];
 
-    const searchRequest = new ProductAdvertisingAPIv1.SearchItemsRequest();
-    searchRequest.PartnerTag   = env.AMAZON_PARTNER_TAG;
-    searchRequest.PartnerType  = 'Associates';
-    searchRequest.Keywords     = keywords;
-    searchRequest.SearchIndex  = searchIndex;
-    searchRequest.ItemCount    = 5;  // Max 5 results per request
-    searchRequest.Resources    = [
-      'ItemInfo.Title',
-      'Offers.Listings.Price',
-      'Images.Primary.Medium',
-    ];
-
-    const response = await new Promise((resolve, reject) => {
-      amazonApi.searchItems(searchRequest, (error, data) => {
-        if (error) reject(error);
-        else resolve(data);
-      });
-    });
-
-    if (!response?.SearchResult?.Items) return [];
-
-    return response.SearchResult.Items.map((item) => ({
+    return [{
       source:       'amazon',
-      title:        item.ItemInfo?.Title?.DisplayValue || 'Amazon Product',
-      price:        item.Offers?.Listings?.[0]?.Price?.Amount || null,
-      originalUrl:  item.DetailPageURL,
-      affiliateUrl: buildAmazonAffiliateUrl(item.ASIN),
-      imageUrl:     item.Images?.Primary?.Medium?.URL || null,
-      metadata:     { asin: item.ASIN },
-    }));
-
+      title:        `Search "${keywords}" on Amazon Egypt`,
+      price:        null,
+      originalUrl:  buildAmazonSearchUrl(keywords),
+      affiliateUrl: buildAmazonSearchUrl(keywords),
+      imageUrl:     'https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg',
+      metadata:     { type: 'search_link', keywords },
+    }];
   } catch (error) {
-    console.error('[Affiliate] Amazon search failed:', error.message);
-    return [];  // Return empty — don't break the whole request
+    console.error('[Affiliate] Amazon failed:', error.message);
+    return [];
   }
 };
 
