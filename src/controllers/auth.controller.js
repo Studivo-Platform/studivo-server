@@ -5,7 +5,7 @@ const { env }                   = require('../config/env');
 const { ApiError }              = require('../utils/ApiError');
 const { ApiResponse }           = require('../utils/ApiResponse');
 const { asyncHandler }          = require('../utils/asyncHandler');
-const { sendVerificationEmail } = require('../services/email.service');
+const { sendVerificationEmail, sendPasswordResetEmail } = require('../services/email.service');
 
 // Token helpers
 function generateAccessToken(userId, role) {
@@ -46,6 +46,11 @@ const register = asyncHandler(async (req, res) => {
 
   // Generate email verification token
     const verificationToken = crypto.randomBytes(32).toString('hex');
+    const hashedToken = crypto.createHash('sha256')
+    .update(verificationToken).digest('hex');
+
+
+    const verificationTokenExpires = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
 
     // Create user (password hashed by pre-save hook in User model)
 
@@ -56,7 +61,8 @@ const register = asyncHandler(async (req, res) => {
         role,
         university,
         phone,
-        verificationToken,
+        verificationToken: hashedToken,
+        verificationTokenExpires,
     });
 
     // Send verification email (don't await — let it happen in background)
@@ -75,7 +81,8 @@ const login = asyncHandler(async (req, res) => {
     const { email, password } = req.body;
 
     // Select password explicitly since it's select: false in schema
-    const user = await User.findOne({ email }).select('+password +refreshTokens +verificationToken');
+    const user = await User.findOne({ email })
+    .select('+password +refreshTokens +verificationToken +verificationTokenExpires');
 
     if (!user || !(await user.comparePassword(password))) {
         // Same error for both cases to prevent email enumeration
@@ -87,12 +94,18 @@ const login = asyncHandler(async (req, res) => {
     }
 
     if (!user.isVerified) {
-        console.log(`User ${user._id} is not verified yet (verification token: ${user.verificationToken})`);
-        // Send verification email (don't await — let it happen in background)
-        sendVerificationEmail(user.email, user.name, user.verificationToken)
-            .catch((err) =>
-                console.error('Failed to send verification email:', err.message)
-            );
+        // Generate a new raw token, store its hash and expiry, then email the raw token
+        const rawVerificationToken = crypto.randomBytes(32).toString('hex');
+        const hashedVerification = crypto.createHash('sha256')
+        .update(rawVerificationToken).digest('hex');
+
+        user.verificationToken = hashedVerification;
+        user.verificationTokenExpires = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+        await user.save({ validateBeforeSave: false });
+
+        sendVerificationEmail(user.email, user.name, rawVerificationToken)
+            .catch((err) => console.error('Failed to send verification email:', err.message));
+
         throw new ApiError(403, 'Your account is not verified. Please check your email.');
     }
 
@@ -118,13 +131,23 @@ const login = asyncHandler(async (req, res) => {
 const verifyEmail = asyncHandler(async (req, res) => {
     const { token } = req.params;
 
-    const user = await User.findOne({ verificationToken: token }).select('+verificationToken');
+    const hashedToken = crypto
+    .createHash('sha256')
+    .update(token)
+    .digest('hex');
+
+    // Check if token is valid
+    const user = await User
+        .findOne({ verificationToken: hashedToken, verificationTokenExpires: { $gt: Date.now() } })
+        .select('+verificationToken +verificationTokenExpires');
     if (!user) {
         throw new ApiError(400, 'Invalid or expired verification token');
     }
 
-    user.isVerified       = true;
+    user.isVerified = true;
     user.verificationToken = undefined;  // Remove token after use
+    user.verificationTokenExpires = undefined;
+
     await user.save({ validateBeforeSave: false });
 
     return res.json(new ApiResponse(200, null, 'Email verified successfully. You can now log in.'));
@@ -165,6 +188,57 @@ const refreshToken = asyncHandler(async (req, res) => {
     return res.json(new ApiResponse(200, { accessToken }, 'Token refreshed'));
 });
 
+// PATCH /api/auth/reset-password
+const resetPassword = asyncHandler(async (req, res) => {
+  const { token, password, confirmPassword } = req.body;
+
+  if (password !== confirmPassword) {
+    throw new ApiError(422, 'Passwords do not match');
+  }
+
+  // Hash the token to compare with stored hash
+  const hashedToken = crypto
+    .createHash('sha256')
+    .update(token)
+    .digest('hex');
+
+  const user = await User
+    .findOne({ resetPasswordToken: hashedToken, resetPasswordExpires: { $gt: Date.now() } })
+    .select('+resetPasswordToken +resetPasswordExpires');
+
+  if (!user) throw new ApiError(400, 'Invalid or expired reset token');
+
+  user.password              = password;  // Pre-save hook hashes it
+  user.resetPasswordToken    = undefined;
+  user.resetPasswordExpires  = undefined;
+  await user.save();
+
+  return res.json(new ApiResponse(200, null, 'Password reset successfully. You can now log in.'));
+});
+
+// POST /api/auth/forgot-password (request reset email)
+const forgotPassword = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+  const user = await User.findOne({ email });
+
+  // Always return success — don't reveal if email exists
+  if (!user) {
+    return res.json(new ApiResponse(200, null, 'If this email exists, a reset link has been sent.'));
+  }
+
+  // Generate token
+  const resetToken  = crypto.randomBytes(32).toString('hex');
+  const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+
+  user.resetPasswordToken   = hashedToken;
+  user.resetPasswordExpires = Date.now() + 60 * 60 * 1000; // 1 hour
+  await user.save({ validateBeforeSave: false });
+
+  await sendPasswordResetEmail(user.email, user.name, resetToken);
+
+  return res.json(new ApiResponse(200, null, 'If this email exists, a reset link has been sent.'));
+});
+
 // logout
 const logout = asyncHandler(async (req, res) => {
     const { refreshToken: token } = req.cookies;
@@ -197,7 +271,7 @@ const googleCallback = asyncHandler(async (req, res) => {
     const refreshToken = generateRefreshToken(user._id);
 
     // Store hashed refresh token
-    const hashedRefresh = require('crypto').createHash('sha256').update(refreshToken).digest('hex');
+    const hashedRefresh = crypto.createHash('sha256').update(refreshToken).digest('hex');
     await User.findByIdAndUpdate(user._id, {
         $push: { refreshTokens: hashedRefresh },
     });
@@ -214,6 +288,8 @@ module.exports = {
     login,
     verifyEmail,
     refreshToken,
+    resetPassword,
+    forgotPassword,
     logout,
     getMe,
     googleCallback,

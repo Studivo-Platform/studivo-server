@@ -64,6 +64,20 @@ const userSchema = new mongoose.Schema({
         select: false,
     },
 
+    verificationTokenExpires: {
+        type:   Date,
+        select: false,
+    },
+
+    resetPasswordToken: {
+        type:   String,
+        select: false,
+    },
+    resetPasswordExpires: {
+        type:   Date,
+        select: false,
+    },
+
     googleId: {
         type:   String,
         default: null,
@@ -109,6 +123,9 @@ userSchema.methods.toJSON = function () {
     const obj = this.toObject();
     delete obj.password;
     delete obj.verificationToken;
+    delete obj.verificationTokenExpires;
+    delete obj.resetPasswordToken;
+    delete obj.resetPasswordExpires;
     delete obj.refreshTokens;
     delete obj.__v;
     return obj;
