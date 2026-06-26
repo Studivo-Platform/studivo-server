@@ -30,7 +30,7 @@ async function startServer() {
         // 5. Start listening
         httpServer.listen(env.PORT, () => {
             console.log(`\n Server running on http://localhost:${env.PORT}`);
-            console.log(`   Health check: http://localhost:${env.PORT}/health\n`);
+            console.log(`   Health check: http://localhost:${env.PORT}/health`);
             console.log(`   Socket.IO:    ws://localhost:${env.PORT}\n`);
         });
 

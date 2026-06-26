@@ -1,5 +1,5 @@
-const conversationRepo = require("../repositories/conversation.repository");
-const messageRepo = require("../repositories/message.repository");
+const conversationRepo = require("../../repositories/conversation.repository");
+const messageRepo = require("../../repositories/message.repository");
 
 const registerChatEvents = (io, socket) => {
   const { userId } = socket.data.user;

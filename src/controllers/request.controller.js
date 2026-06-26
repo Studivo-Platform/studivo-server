@@ -7,6 +7,8 @@ const requestRepo       = require('../repositories/request.repository');
 const offerRepo         = require('../repositories/offer.repository');
 const scrapedRepo       = require('../repositories/scrapedResult.repository');
 const { getIO }         = require('../socket/index');
+const { emitNewRequest } = require('../socket/events/request.events');
+
 //  POST /api/requests
 // Student creates a new request.
 // Flow: validate → AI parse → save → queue scrape job → respond

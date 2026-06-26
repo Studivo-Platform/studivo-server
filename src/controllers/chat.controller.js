@@ -10,20 +10,21 @@ const requestRepo      = require('../repositories/request.repository');
 // Called when student clicks "Chat" on an offer
 const createConversation = asyncHandler(async (req, res) => {
   const { requestId, sellerId, offerId } = req.body;
-  const studentId = req.user._id;
+  const studentId = req.user._id.toString();
 
   // Verify the request exists
   const request = await requestRepo.findById(requestId);
   if (!request) throw new ApiError(404, 'Request not found');
 
   // Student can only start conversation for their own request
-  if (request.userId.toString() !== studentId.toString()) {
+  console.log(` re -> ${request.userId._id.toString()} ${studentId}`);
+  if (request.userId._id.toString() !== studentId) {
     throw new ApiError(403, 'You can only start a conversation for your own request');
   }
 
   // findOrCreate: returns existing or creates new (no duplicate conversations)
   const conversation = await conversationRepo.findOrCreate({
-    participants: [studentId.toString(), sellerId],
+    participants: [studentId, sellerId],
     requestId,
     offerId,
   });

@@ -108,8 +108,9 @@ const login = asyncHandler(async (req, res) => {
     setRefreshTokenCookie(res, refreshToken);
 
     return res.json(new ApiResponse(200, {
-        accessToken,
         user: { id: user._id, name: user.name, email: user.email, role: user.role },
+        accessToken,
+        refreshToken
     }, 'Logged in successfully'));
 });
 

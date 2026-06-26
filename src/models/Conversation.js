@@ -2,6 +2,13 @@ const mongoose = require('mongoose');
 
 const conversationSchema = new mongoose.Schema(
   {
+    conversationKey: {
+      type: String,
+      required: true,
+      unique: true,
+      index: true,
+    },
+
     // Exactly 2 participants: [studentId, sellerId]
     participants: {
       type:     [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
@@ -39,7 +46,9 @@ const conversationSchema = new mongoose.Schema(
 );
 
 // Prevent duplicate conversations between same two users for same request
-conversationSchema.index({ participants: 1, requestId: 1 }, { unique: true });
+conversationSchema.index(
+  { conversationKey: 1, participants: 1, requestId: 1 },
+  { unique: true });
 
 const Conversation = mongoose.model('Conversation', conversationSchema);
 

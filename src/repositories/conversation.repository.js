@@ -5,19 +5,21 @@ const { Conversation } = require("../models/Conversation");
 const findOrCreate = async ({ participants, requestId, offerId }) => {
   // Sort participants so [A,B] and [B,A] result in the same conversation
   const sortedParticipants = [...participants].sort();
+  const conversationKey = `${requestId}:${sortedParticipants.join(':')}`;
 
   const conversation = await Conversation.findOneAndUpdate(
-    { participants: { $all: sortedParticipants }, requestId },
-    {
-      $setOnInsert: {
-        participants: sortedParticipants,
-        requestId,
-        offerId: offerId || null,
-      },
+  { conversationKey },
+  {
+    $setOnInsert: {
+      conversationKey,
+      participants: sortedParticipants,
+      requestId,
+      offerId: offerId ?? null,
     },
+  },
     {
       upsert: true, // Create if not found
-      new: true, // Return the document after update
+      returnDocument: 'after', // Return the document after update
       setDefaultsOnInsert: true,
     },
   ).populate("participants", "name profileImage role");

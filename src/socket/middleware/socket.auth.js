@@ -1,18 +1,22 @@
 const jwt = require("jsonwebtoken");
-const { User } = require("../models/User");
-const { env } = require("../config/env");
+const { User } = require("../../models/User");
+const { env } = require("../../config/env");
 
 // Socket.IO middleware — runs once per connection attempt
 // Frontend sends token in: socket = io(URL, { auth: { token: 'Bearer xxx' } })
 const socketAuth = async (socket, next) => {
   try {
-    const token = socket.handshake.auth?.token?.replace("Bearer ", "");
+      const token =
+      socket.handshake.auth?.token ??
+      socket.handshake.headers.authorization;
 
-    if (!token) {
-      return next(new Error("Authentication token is required"));
-    }
+      const accessToken = token?.replace("Bearer ", "");
 
-    const decoded = jwt.verify(token, env.JWT_SECRET);
+      if (!accessToken) {
+          return next(new Error("Authentication token is required"));
+      }
+
+const decoded = jwt.verify(accessToken, env.JWT_SECRET);
     const user = await User.findById(decoded.userId).lean();
 
     if (!user) return next(new Error("User not found"));
