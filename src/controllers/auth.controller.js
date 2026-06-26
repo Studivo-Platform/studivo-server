@@ -34,6 +34,17 @@ function setRefreshTokenCookie(res, token) {
     });
 }
 
+function getRefreshToken(req) {
+    const fromCookies = req?.cookies && typeof req.cookies === 'object'
+        ? req.cookies.refreshToken
+        : undefined;
+    const fromBody = req?.body && typeof req.body === 'object'
+        ? req.body.refreshToken
+        : undefined;
+
+    return fromCookies || fromBody;
+}
+
 // register
 const register = asyncHandler(async (req, res) => {
     const { name, email, password, role, university, phone } = req.body;
@@ -155,7 +166,7 @@ const verifyEmail = asyncHandler(async (req, res) => {
 
 // refreshToken
 const refreshToken = asyncHandler(async (req, res) => {
-    const { refreshToken: token } = req.cookies;
+    const token = getRefreshToken(req);
     if (!token) throw new ApiError(401, 'Refresh token not found');
 
     let decoded;
@@ -234,14 +245,15 @@ const forgotPassword = asyncHandler(async (req, res) => {
   user.resetPasswordExpires = Date.now() + 60 * 60 * 1000; // 1 hour
   await user.save({ validateBeforeSave: false });
 
-  await sendPasswordResetEmail(user.email, user.name, resetToken);
+  sendPasswordResetEmail(user.email, user.name, resetToken)
+  .catch((err) => console.error('Failed to send password reset email:', err.message));
 
   return res.json(new ApiResponse(200, null, 'If this email exists, a reset link has been sent.'));
 });
 
 // logout
 const logout = asyncHandler(async (req, res) => {
-    const { refreshToken: token } = req.cookies;
+    const token = getRefreshToken(req);
 
     if (token) {
         // Remove this refresh token from the user's stored tokens
