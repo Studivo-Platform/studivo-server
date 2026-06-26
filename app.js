@@ -3,6 +3,7 @@ const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
 const mongoSanitize = require("express-mongo-sanitize");
+const cookieParser = require("cookie-parser");
 
 const { env } = require("./src/config/env");
 const passport = require("./src/config/passport");
@@ -11,6 +12,9 @@ const authRoutes = require("./src/routes/auth.routes");
 const requestRoutes = require("./src/routes/request.routes");
 const offerRoutes = require("./src/routes/offer.routes");
 const chatRoutes = require("./src/routes/chat.routes");
+const searchRoutes = require("./src/routes/search.routes");
+const notificationRoutes = require("./src/routes/notification.routes");
+
 const app = express();
 
 // Security Middleware
@@ -21,6 +25,7 @@ app.use(
     credentials: true, // Allow cookies (for refresh token)
   }),
 );
+
 // app.use(mongoSanitize());                  // Strip MongoDB operators from user input
 
 // Authentication Middleware
@@ -29,15 +34,17 @@ app.use(passport.initialize()); // No sessions — we use JWT
 // Request Parsing
 app.use(express.json({ limit: "10mb" })); // Parse JSON bodies
 app.use(express.urlencoded({ extended: true })); // Parse form bodies
+app.use(cookieParser()); // Parse cookies
 
 // Sanitize user input after request parsing. Express 5 exposes a read-only getter for
 // req.query, so we sanitize the existing object in place instead of reassigning it.
 app.use((req, res, next) => {
-  ["body", "params", "headers", "query"].forEach((key) => {
+  ["body", "params", "query"].forEach((key) => {
     if (req[key] && typeof req[key] === "object") {
       mongoSanitize.sanitize(req[key]);
     }
   });
+
   next();
 });
 
@@ -66,11 +73,11 @@ app.get("/health", (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/requests", requestRoutes);
 app.use("/api/offers", offerRoutes);
-app.use('/api/conversations', chatRoutes);
+app.use("/api/conversations", chatRoutes);
+app.use("/api/search", searchRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 // More routes will be added here each sprint:
-// app.use('/api/search',        searchRoutes);
-// app.use('/api/notifications', notificationRoutes);
 // app.use('/api/admin',         adminRoutes);
 
 // 404 Handler

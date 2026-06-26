@@ -1,5 +1,6 @@
 const conversationRepo = require("../../repositories/conversation.repository");
 const messageRepo = require("../../repositories/message.repository");
+const { createAndEmit } = require('../../services/notification.service');
 
 const registerChatEvents = (io, socket) => {
   const { userId } = socket.data.user;
@@ -89,6 +90,21 @@ const registerChatEvents = (io, socket) => {
           message,
           conversationId,
         });
+
+        // Notify the OTHER participant (not the sender)
+        const otherParticipantId = conversation.participants
+          .find((p) => p.toString() !== userId.toString());
+
+        if (otherParticipantId) {
+          createAndEmit({
+            userId:       otherParticipantId,
+            type:         'new_message',
+            message:      `New message from ${socket.data.user.name}`,
+            resourceId:   conversationId,
+            resourceType: 'Conversation',
+          }).catch(() => {});
+        }
+
       } catch (error) {
         console.error("[Socket] send_message error:", error.message);
         socket.emit("error", { message: "Failed to send message" });

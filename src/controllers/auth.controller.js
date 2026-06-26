@@ -41,8 +41,11 @@ function getRefreshToken(req) {
     const fromBody = req?.body && typeof req.body === 'object'
         ? req.body.refreshToken
         : undefined;
+    const fromHeaders = req?.headers && typeof req.headers === 'object'
+        ? req.headers['x-refresh-token']
+        : undefined;
 
-    return fromCookies || fromBody;
+    return fromCookies || fromBody || fromHeaders;
 }
 
 // register
@@ -254,7 +257,6 @@ const forgotPassword = asyncHandler(async (req, res) => {
 // logout
 const logout = asyncHandler(async (req, res) => {
     const token = getRefreshToken(req);
-
     if (token) {
         // Remove this refresh token from the user's stored tokens
         const hashedToken = crypto.createHash('sha256').update(token).digest('hex');

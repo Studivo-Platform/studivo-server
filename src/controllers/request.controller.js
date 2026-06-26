@@ -1,13 +1,14 @@
-const { ApiError }      = require('../utils/ApiError');
-const { ApiResponse }   = require('../utils/ApiResponse');
-const { asyncHandler }  = require('../utils/asyncHandler');
-const { parseRequest }  = require('../services/ai.service');
-const { addScrapeJob }  = require('../services/queue.service');
-const requestRepo       = require('../repositories/request.repository');
-const offerRepo         = require('../repositories/offer.repository');
-const scrapedRepo       = require('../repositories/scrapedResult.repository');
-const { getIO }         = require('../socket/index');
-const { emitNewRequest } = require('../socket/events/request.events');
+const { ApiError } = require("../utils/ApiError");
+const { ApiResponse } = require("../utils/ApiResponse");
+const { asyncHandler } = require("../utils/asyncHandler");
+const { parseRequest } = require("../services/ai.service");
+const { addScrapeJob } = require("../services/queue.service");
+const requestRepo = require("../repositories/request.repository");
+const offerRepo = require("../repositories/offer.repository");
+const scrapedRepo = require("../repositories/scrapedResult.repository");
+const { getIO } = require("../socket/index");
+const { emitNewRequest } = require("../socket/events/request.events");
+const { createAndEmit } = require("../services/notification.service");
 
 //  POST /api/requests
 // Student creates a new request.
@@ -20,9 +21,9 @@ const createRequest = asyncHandler(async (req, res) => {
   const { parsedData, fromCache, usedFallback } = await parseRequest(rawText);
 
   // 2. Merge categoryHint and budget from the student (manual overrides AI)
-  if (categoryHint)     parsedData.category = categoryHint;
-  if (budget?.max)      parsedData.budget.max = budget.max;
-  if (budget?.min)      parsedData.budget.min = budget.min;
+  if (categoryHint) parsedData.category = categoryHint;
+  if (budget?.max) parsedData.budget.max = budget.max;
+  if (budget?.min) parsedData.budget.min = budget.min;
 
   // 3. Save to MongoDB
   const request = await requestRepo.create({
@@ -34,7 +35,7 @@ const createRequest = asyncHandler(async (req, res) => {
   // 4. Queue a scrape job in the background (non-blocking)
   // Don't await — let it happen asynchronously
   addScrapeJob(request._id, parsedData).catch((err) =>
-    console.error('[Request] Failed to add scrape job:', err.message)
+    console.error("[Request] Failed to add scrape job:", err.message),
   );
 
   // 5. Emit Socket.IO event to notify sellers in this category
@@ -42,26 +43,40 @@ const createRequest = asyncHandler(async (req, res) => {
     const io = getIO();
     emitNewRequest(io, {
       requestId: request._id,
-      category:  parsedData.category,
-      summary:   rawText.slice(0, 100),
-      budget:    parsedData.budget,
+      category: parsedData.category,
+      summary: rawText.slice(0, 100),
+      budget: parsedData.budget,
     });
   } catch {
     // Socket not initialized yet — skip emit (happens in tests)
   }
 
+  // Notification will be sent to sellers when they receive the socket event
+  // We add system notification for the student confirming their request was posted:
+  createAndEmit({
+    userId: userId,
+    type: "system",
+    message: "Your request was posted. We are finding matching offers...",
+    resourceId: request._id,
+    resourceType: "Request",
+  }).catch(() => {});
+
   return res.status(201).json(
-    new ApiResponse(201, {
-      request,
-      meta: { fromCache, usedFallback: usedFallback || false },
-    }, 'Request posted successfully. Finding offers...')
+    new ApiResponse(
+      201,
+      {
+        request,
+        meta: { fromCache, usedFallback: usedFallback || false },
+      },
+      "Request posted successfully. Finding offers...",
+    ),
   );
 });
 
 // GET /api/requests/my
 // Student sees their own requests (paginated)
 const getMyRequests = asyncHandler(async (req, res) => {
-  const page  = parseInt(req.query.page)  || 1;
+  const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
 
   const result = await requestRepo.findByUser(req.user._id, { page, limit });
@@ -82,8 +97,7 @@ const getById = asyncHandler(async (req, res) => {
     scrapedRepo.findByRequest(id),
   ]);
 
-  if (!request)
-    throw new ApiError(404, 'Request not found');
+  if (!request) throw new ApiError(404, "Request not found");
 
   // Increment view count in background
   requestRepo.incrementViews(id).catch(() => {});
@@ -91,17 +105,17 @@ const getById = asyncHandler(async (req, res) => {
   return res.json(
     new ApiResponse(200, {
       request,
-      offers,          // Local seller offers
-      scrapedResults,  // Amazon / Noon / OLX results
-    })
+      offers, // Local seller offers
+      scrapedResults, // Amazon / Noon / OLX results
+    }),
   );
 });
 
 // GET /api/requests
 // Seller sees open requests filtered by category
 const getOpenRequests = asyncHandler(async (req, res) => {
-  const { category }  = req.query;
-  const page  = parseInt(req.query.page)  || 1;
+  const { category } = req.query;
+  const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
 
   const result = await requestRepo.findOpen({ category, page, limit });
@@ -114,20 +128,26 @@ const getOpenRequests = asyncHandler(async (req, res) => {
 const closeRequest = asyncHandler(async (req, res) => {
   const request = await requestRepo.findById(req.params.id);
 
-  if (!request) throw new ApiError(404, 'Request not found');
+  if (!request) throw new ApiError(404, "Request not found");
 
   // Only the owner can close their request
   if (request.userId._id.toString() !== req.user._id.toString()) {
-    throw new ApiError(403, 'You can only close your own requests');
+    throw new ApiError(403, "You can only close your own requests");
   }
 
-  if (request.status === 'closed') {
-    throw new ApiError(400, 'Request is already closed');
+  if (request.status === "closed") {
+    throw new ApiError(400, "Request is already closed");
   }
 
-  const updated = await requestRepo.updateStatus(req.params.id, 'closed');
+  const updated = await requestRepo.updateStatus(req.params.id, "closed");
 
-  return res.json(new ApiResponse(200, updated, 'Request closed successfully'));
+  return res.json(new ApiResponse(200, updated, "Request closed successfully"));
 });
 
-module.exports = { createRequest, getMyRequests, getById, getOpenRequests, closeRequest };
+module.exports = {
+  createRequest,
+  getMyRequests,
+  getById,
+  getOpenRequests,
+  closeRequest,
+};
