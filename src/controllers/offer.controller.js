@@ -6,6 +6,7 @@ const requestRepo = require("../repositories/request.repository");
 const cloudinaryService = require("../services/cloudinary.service");
 const { getIO } = require("../socket/index");
 const { emitNewOffer } = require("../socket/events/request.events");
+const { createAndEmit } = require("../services/notification.service");
 
 const MAX_OFFERS_PER_SELLER = 3;
 
@@ -17,8 +18,9 @@ const createOffer = asyncHandler(async (req, res) => {
 
   // 1. Verify the request exists and is still open
   const request = await requestRepo.findById(requestId);
-  if (!request)
+  if (!request) 
     throw new ApiError(404, "Request not found");
+
   if (request.status !== "open")
     throw new ApiError(400, "This request is no longer accepting offers");
 
@@ -72,6 +74,15 @@ const createOffer = asyncHandler(async (req, res) => {
     // Skip if socket not initialized
   }
 
+  // Notify the student who owns the request
+  createAndEmit({
+    userId: request.userId,
+    type: "new_offer",
+    message: `${req.user.name} submitted an offer of EGP ${price} on your request`,
+    resourceId: request._id,
+    resourceType: "Request",
+  }).catch(() => {}); // Fire and forget
+  
   return res
     .status(201)
     .json(new ApiResponse(201, offer, "Offer submitted successfully"));

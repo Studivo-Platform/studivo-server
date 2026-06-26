@@ -1,12 +1,12 @@
-const { Router }    = require('express');
-const notifCtrl     = require('../controllers/notification.controller');
-const { verifyJWT } = require('../middleware/auth.middleware');
+const { Router } = require("express");
+const notifController = require("../controllers/notification.controller");
+const { verifyJWT } = require("../middleware/auth.middleware");
 
 const router = Router();
 router.use(verifyJWT);
 
-router.get('/',              notifCtrl.getNotifications);
-router.patch('/read-all',    notifCtrl.markAllRead);       // Must be BEFORE /:id
-router.patch('/:id/read',    notifCtrl.markRead);
+router.get("/", notifController.getNotifications);
+router.patch("/read-all", notifController.markAllRead); // Must be BEFORE /:id
+router.patch("/:id/read", notifController.markRead);
 
 module.exports = router;
