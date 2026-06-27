@@ -30,8 +30,13 @@ const userSchema = new mongoose.Schema({
 
     role: {
         type:    String,
-        enum:    ['student', 'seller', 'admin'],
-        default: 'student',
+        enum:    ['student', 'seller', 'admin', null],
+        default: null,
+    },
+
+    isProfileCompleted: {
+        type:    Boolean,
+        default: false,
     },
 
     university: {
@@ -96,6 +101,7 @@ const userSchema = new mongoose.Schema({
 
 //  Indexes
 userSchema.index({ role: 1 });   // Faster queries when filtering by role
+userSchema.index({ googleId: 1 }, { sparse: true });
 
 //  Pre-save Hook
 // Runs before every .save() call — hashes password if it was changed

@@ -1,6 +1,7 @@
 const jwt = require("jsonwebtoken");
 const { User } = require("../../models/User");
 const { env } = require("../../config/env");
+const { isProfileComplete } = require("../../services/auth.service");
 
 // Socket.IO middleware — runs once per connection attempt
 // Frontend sends token in: socket = io(URL, { auth: { token: 'Bearer xxx' } })
@@ -21,6 +22,7 @@ const decoded = jwt.verify(accessToken, env.JWT_SECRET);
 
     if (!user) return next(new Error("User not found"));
     if (!user.isActive) return next(new Error("Account is deactivated"));
+    if (!isProfileComplete(user)) return next(new Error("Profile completion is required"));
 
     // Attach user data to socket — available in all event handlers
     socket.data.user = {

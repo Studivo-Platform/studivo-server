@@ -12,28 +12,53 @@ passport.use(
     
     async (accessToken, refreshToken, profile, done) => {
         try {
-            const email = profile.emails[0].value;
+            const email = profile.emails?.[0]?.value?.toLowerCase();
             const name  = profile.displayName;
-            const photo = profile.photos[0]?.value || null;
+            const photo = profile.photos?.[0]?.value || null;
 
-            // Check if user already exists with this email
-            let user = await User.findOne({ email });
-
-            if (user) {
-            // User exists (maybe registered with email/password before)
-            // Just log them in — no need to create a new account
-            return done(null, user);
+            if (!email) {
+                return done(new Error('Google account does not expose an email address'), null);
             }
 
-            // First time Google login — create account automatically
-            // No password needed for Google users
+            // Google proves identity only. The app owns role/profile decisions.
+            let user = await User.findOne({
+                $or: [{ googleId: profile.id }, { email }],
+            }).select('+googleId');
+
+            if (user) {
+                let changed = false;
+
+                if (!user.googleId) {
+                    user.googleId = profile.id;
+                    changed = true;
+                }
+
+                if (!user.profileImage && photo) {
+                    user.profileImage = photo;
+                    changed = true;
+                }
+
+                if (user.isVerified === false) {
+                    user.isVerified = true;
+                    changed = true;
+                }
+
+                if (changed) {
+                    await user.save({ validateBeforeSave: false });
+                }
+
+                return done(null, user);
+            }
+
+            // First Google login creates an incomplete application profile.
             user = await User.create({
                 name,
                 email,
-                password:     require('crypto').randomBytes(32).toString('hex'), // Random password — they use Google to login
-                role:         'student',
+                password:     require('crypto').randomBytes(32).toString('hex'),
+                role:         null,
+                isProfileCompleted: false,
                 profileImage: photo,
-                isVerified:   true,   // Google already verified their email
+                isVerified:   true,
                 googleId:     profile.id,
             });
 

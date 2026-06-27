@@ -6,7 +6,6 @@ const { addScrapeJob } = require("../services/queue.service");
 const requestRepo = require("../repositories/request.repository");
 const offerRepo = require("../repositories/offer.repository");
 const scrapedRepo = require("../repositories/scrapedResult.repository");
-const { getIO } = require("../socket/index");
 const { emitNewRequest } = require("../socket/events/request.events");
 const { createAndEmit } = require("../services/notification.service");
 
@@ -40,8 +39,7 @@ const createRequest = asyncHandler(async (req, res) => {
 
   // 5. Emit Socket.IO event to notify sellers in this category
   try {
-    const io = getIO();
-    emitNewRequest(io, {
+    emitNewRequest(req.io, {
       requestId: request._id,
       category: parsedData.category,
       summary: rawText.slice(0, 100),
@@ -59,6 +57,7 @@ const createRequest = asyncHandler(async (req, res) => {
     message: "Your request was posted. We are finding matching offers...",
     resourceId: request._id,
     resourceType: "Request",
+    io: req.io,
   }).catch(() => {});
 
   return res.status(201).json(

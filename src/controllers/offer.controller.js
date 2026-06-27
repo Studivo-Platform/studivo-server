@@ -4,7 +4,6 @@ const { asyncHandler } = require("../utils/asyncHandler");
 const offerRepo = require("../repositories/offer.repository");
 const requestRepo = require("../repositories/request.repository");
 const cloudinaryService = require("../services/cloudinary.service");
-const { getIO } = require("../socket/index");
 const { emitNewOffer } = require("../socket/events/request.events");
 const { createAndEmit } = require("../services/notification.service");
 
@@ -62,8 +61,7 @@ const createOffer = asyncHandler(async (req, res) => {
 
   // 6. Notify the student via Socket.IO
   try {
-    const io = getIO();
-    emitNewOffer(io, {
+    emitNewOffer(req.io, {
       requestId,
       offerId: offer._id,
       price,
@@ -81,6 +79,7 @@ const createOffer = asyncHandler(async (req, res) => {
     message: `${req.user.name} submitted an offer of EGP ${price} on your request`,
     resourceId: request._id,
     resourceType: "Request",
+    io: req.io,
   }).catch(() => {}); // Fire and forget
   
   return res

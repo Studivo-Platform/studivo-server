@@ -102,6 +102,7 @@ const registerChatEvents = (io, socket) => {
             message:      `New message from ${socket.data.user.name}`,
             resourceId:   conversationId,
             resourceType: 'Conversation',
+            io,
           }).catch(() => {});
         }
 

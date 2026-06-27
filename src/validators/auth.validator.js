@@ -74,4 +74,17 @@ const resetPasswordSchema = z
     path: ['confirmPassword'],
   });
 
-module.exports = { registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema };
+const completeProfileSchema = z.object({
+  role: z.enum(["student", "seller"], {
+    errorMap: () => ({ message: "Role must be student or seller" }),
+  }),
+  profileCompletionToken: z.string().min(1).optional(),
+});
+
+module.exports = {
+  registerSchema,
+  loginSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+  completeProfileSchema,
+};

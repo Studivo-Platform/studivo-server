@@ -20,7 +20,7 @@ const notificationRoutes = require("./src/routes/notification.routes");
 const adminRoutes = require("./src/routes/admin.routes");
 
 const app = express();
-
+app.set('trust proxy', 1); // Trust the first proxy
 // Security Middleware
 // Security Headers
 app.use(helmet({

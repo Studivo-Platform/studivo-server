@@ -3,6 +3,7 @@ const { User }         = require('../models/User');
 const { env }          = require('../config/env');
 const { ApiError }     = require('../utils/ApiError');
 const { asyncHandler } = require('../utils/asyncHandler');
+const { isProfileComplete } = require('../services/auth.service');
 
 // Verifies JWT from Authorization header and attaches user to req
 const verifyJWT = asyncHandler(async (req, res, next) => {
@@ -30,6 +31,7 @@ const verifyJWT = asyncHandler(async (req, res, next) => {
     if (!user)            throw new ApiError(401, 'User no longer exists');
     if (!user.isActive)   throw new ApiError(403, 'Account has been deactivated');
     if (!user.isVerified) throw new ApiError(403, 'Account has not been verified');
+    if (!isProfileComplete(user)) throw new ApiError(403, 'Profile completion is required');
 
     req.user = user;
     next();

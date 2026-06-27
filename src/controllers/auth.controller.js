@@ -1,52 +1,11 @@
 const crypto                    = require('crypto');
-const jwt                       = require('jsonwebtoken');
 const { User }                  = require('../models/User');
 const { env }                   = require('../config/env');
 const { ApiError }              = require('../utils/ApiError');
 const { ApiResponse }           = require('../utils/ApiResponse');
 const { asyncHandler }          = require('../utils/asyncHandler');
 const { sendVerificationEmail, sendPasswordResetEmail } = require('../services/email.service');
-
-// Token helpers
-function generateAccessToken(userId, role) {
-    return jwt.sign(
-        { userId, role },
-        env.JWT_SECRET,
-        { expiresIn: env.JWT_ACCESS_EXPIRES }
-    );
-}
-
-function generateRefreshToken(userId) {
-    return jwt.sign(
-        { userId },
-        env.JWT_REFRESH_SECRET,
-        { expiresIn: env.JWT_REFRESH_EXPIRES }
-    );
-}
-
-// Sets refresh token as httpOnly cookie (more secure than localStorage)
-function setRefreshTokenCookie(res, token) {
-    res.cookie('refreshToken', token, {
-        httpOnly: true,                           // JS cannot access this cookie
-        secure:   env.NODE_ENV === 'production',  // HTTPS only in production
-        sameSite: 'strict',                       // Prevent CSRF attacks
-        maxAge:   7 * 24 * 60 * 60 * 1000,       // 7 days in ms
-    });
-}
-
-function getRefreshToken(req) {
-    const fromCookies = req?.cookies && typeof req.cookies === 'object'
-        ? req.cookies.refreshToken
-        : undefined;
-    const fromBody = req?.body && typeof req.body === 'object'
-        ? req.body.refreshToken
-        : undefined;
-    const fromHeaders = req?.headers && typeof req.headers === 'object'
-        ? req.headers['x-refresh-token']
-        : undefined;
-
-    return fromCookies || fromBody || fromHeaders;
-}
+const authService               = require('../services/auth.service');
 
 // register
 const register = asyncHandler(async (req, res) => {
@@ -73,6 +32,7 @@ const register = asyncHandler(async (req, res) => {
         email,
         password,
         role,
+        isProfileCompleted: true,
         university,
         phone,
         verificationToken: hashedToken,
@@ -123,22 +83,9 @@ const login = asyncHandler(async (req, res) => {
         throw new ApiError(403, 'Your account is not verified. Please check your email.');
     }
 
-    // Generate tokens
-    const accessToken  = generateAccessToken(user._id, user.role);
-    const refreshToken = generateRefreshToken(user._id);
+    const authPayload = await authService.issueAuthTokens(user, res);
 
-    // Store hashed refresh token in DB (for rotation/revocation)
-    const hashedRefresh = crypto.createHash('sha256').update(refreshToken).digest('hex');
-    user.refreshTokens = [...(user.refreshTokens || []), hashedRefresh];
-    await user.save({ validateBeforeSave: false });
-
-    setRefreshTokenCookie(res, refreshToken);
-
-    return res.json(new ApiResponse(200, {
-        user: { id: user._id, name: user.name, email: user.email, role: user.role },
-        accessToken,
-        refreshToken
-    }, 'Logged in successfully'));
+    return res.json(new ApiResponse(200, authPayload, 'Logged in successfully'));
 });
 
 // verifyEmail
@@ -169,37 +116,11 @@ const verifyEmail = asyncHandler(async (req, res) => {
 
 // refreshToken
 const refreshToken = asyncHandler(async (req, res) => {
-    const token = getRefreshToken(req);
+    const token = authService.getRefreshToken(req);
     if (!token) throw new ApiError(401, 'Refresh token not found');
 
-    let decoded;
-    try {
-        decoded = jwt.verify(token, env.JWT_REFRESH_SECRET);
-    } catch {
-        throw new ApiError(401, 'Invalid or expired refresh token');
-    }
-
-    // Check if this refresh token exists in the user's stored tokens
-    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
-    const user = await User.findById(decoded.userId).select('+refreshTokens');
-
-    if (!user || !user.refreshTokens.includes(hashedToken)) {
-        throw new ApiError(401, 'Refresh token has been revoked');
-    }
-
-    // Rotate: remove old token, add new one
-    const newRefreshToken = generateRefreshToken(user._id);
-    const newHashed       = crypto.createHash('sha256').update(newRefreshToken).digest('hex');
-
-    user.refreshTokens = user.refreshTokens
-        .filter((t) => t !== hashedToken)
-        .concat(newHashed);
-    await user.save({ validateBeforeSave: false });
-
-    const accessToken = generateAccessToken(user._id, user.role);
-    setRefreshTokenCookie(res, newRefreshToken);
-
-    return res.json(new ApiResponse(200, { accessToken }, 'Token refreshed'));
+    const payload = await authService.rotateRefreshToken(token, res);
+    return res.json(new ApiResponse(200, payload, 'Token refreshed'));
 });
 
 // PATCH /api/auth/reset-password
@@ -256,14 +177,8 @@ const forgotPassword = asyncHandler(async (req, res) => {
 
 // logout
 const logout = asyncHandler(async (req, res) => {
-    const token = getRefreshToken(req);
-    if (token) {
-        // Remove this refresh token from the user's stored tokens
-        const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
-        await User.findByIdAndUpdate(req.user._id, {
-        $pull: { refreshTokens: hashedToken },
-        });
-    }
+    const token = authService.getRefreshToken(req);
+    await authService.revokeRefreshToken(req.user._id, token);
 
     res.clearCookie('refreshToken');
     return res.json(new ApiResponse(200, null, 'Logged out successfully'));
@@ -276,25 +191,47 @@ const getMe = asyncHandler(async (req, res) => {
 });
 
 // googleCallback — called by passport after Google redirects back
-// Generates our own JWT tokens and sends them to the frontend
 const googleCallback = asyncHandler(async (req, res) => {
-  // req.user is set by passport after successful Google auth
     const user = req.user;
+    const redirectUrl = new URL('/auth/google/success', env.CLIENT_URL);
 
-    const accessToken  = generateAccessToken(user._id, user.role);
-    const refreshToken = generateRefreshToken(user._id);
+    if (!authService.isProfileComplete(user)) {
+        redirectUrl.searchParams.set('requiresRole', 'true');
+        redirectUrl.searchParams.set(
+            'profileCompletionToken',
+            authService.generateProfileCompletionToken(user._id)
+        );
 
-    // Store hashed refresh token
-    const hashedRefresh = crypto.createHash('sha256').update(refreshToken).digest('hex');
-    await User.findByIdAndUpdate(user._id, {
-        $push: { refreshTokens: hashedRefresh },
-    });
+        return res.redirect(redirectUrl.toString());
+    }
 
-    setRefreshTokenCookie(res, refreshToken);
+    const authPayload = await authService.issueAuthTokens(user, res);
+    redirectUrl.searchParams.set('token', authPayload.accessToken);
 
-    // Redirect to frontend with accessToken as query param
-    // Frontend reads it once, stores in memory, then deletes from URL
-    res.redirect(`${process.env.CLIENT_URL}/auth/google/success?token=${accessToken}`);
+    return res.redirect(redirectUrl.toString());
+});
+
+const completeProfile = asyncHandler(async (req, res) => {
+    const token = authService.getProfileCompletionToken(req);
+    if (!token) throw new ApiError(401, 'Profile completion token is required');
+
+    const decoded = authService.verifyProfileCompletionToken(token);
+    const user = await User.findById(decoded.userId).select('+refreshTokens');
+
+    if (!user) throw new ApiError(404, 'User not found');
+    if (!user.isActive) throw new ApiError(403, 'Your account has been deactivated. Contact support.');
+    if (!user.isVerified) throw new ApiError(403, 'Account has not been verified');
+
+    if (authService.isProfileComplete(user)) {
+        const authPayload = await authService.issueAuthTokens(user, res);
+        return res.json(new ApiResponse(200, authPayload, 'Profile already completed'));
+    }
+
+    user.role = req.body.role;
+    user.isProfileCompleted = true;
+
+    const authPayload = await authService.issueAuthTokens(user, res);
+    return res.json(new ApiResponse(200, authPayload, 'Profile completed successfully'));
 });
 
 module.exports = {
@@ -307,4 +244,5 @@ module.exports = {
     logout,
     getMe,
     googleCallback,
+    completeProfile,
 };
