@@ -139,17 +139,32 @@ const searchExternal = asyncHandler(async (req, res) => {
     budget:   { max: maxPrice || null, currency: 'EGP' },
   };
 
-  const [amazonRes, noonRes] = await Promise.all([
+  // const [amazonRes, noonRes] = await Promise.all([
+  //   searchAmazon(searchContext),
+  //   searchNoon(searchContext),
+  // ]);
+
+  // const results = [
+  //   ...amazonRes.map((r) => ({ ...r, _source: 'amazon' })),
+  //   ...noonRes.map((r)   => ({ ...r, _source: 'noon'   })),
+  // ];
+
+  const scrapers = [
     searchAmazon(searchContext),
     searchNoon(searchContext),
-  ]);
-
-  const results = [
-    ...amazonRes.map((r) => ({ ...r, _source: 'amazon' })),
-    ...noonRes.map((r)   => ({ ...r, _source: 'noon'   })),
+    scrapeOLX(keywords, category),
   ];
 
-  return res.json(new ApiResponse(200, { results, query: q }));
+  if (category === 'housing')     scrapers.push(scrapeAqar(keywords));
+  if (category === 'electronics') scrapers.push(scrapeBtech(keywords));
+
+  const allResults = (await Promise.allSettled(scrapers))
+    .filter((r) => r.status === 'fulfilled')
+    .flatMap((r) => r.value);
+
+  externalResults = allResults.map((r) => ({ ...r, _source: r.source }));
+
+  return res.json(new ApiResponse(200, { externalResults, query: q }));
 });
 
 module.exports = { search, searchExternal };
