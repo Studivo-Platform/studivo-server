@@ -8,25 +8,45 @@ const cookieParser = require("cookie-parser");
 const { env } = require("./src/config/env");
 const passport = require("./src/config/passport");
 const { errorHandler } = require("./src/middleware/error.middleware");
+const { globalLimiter } = require("./src/middleware/rateLimit.middleware");
+
+// Routes
 const authRoutes = require("./src/routes/auth.routes");
 const requestRoutes = require("./src/routes/request.routes");
 const offerRoutes = require("./src/routes/offer.routes");
 const chatRoutes = require("./src/routes/chat.routes");
 const searchRoutes = require("./src/routes/search.routes");
 const notificationRoutes = require("./src/routes/notification.routes");
+const adminRoutes = require("./src/routes/admin.routes");
 
 const app = express();
 
 // Security Middleware
-app.use(helmet()); // Sets secure HTTP headers
+// Security Headers
+app.use(helmet({
+  crossOriginEmbedderPolicy: false,   // Allow Cloudinary images to load
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      imgSrc:     ["'self'", 'data:', 'res.cloudinary.com'],
+      connectSrc: ["'self'", env.CLIENT_URL],
+    },
+  },
+}));
+
+// CORS
 app.use(
   cors({
-    origin: env.CLIENT_URL, // Only allow our Next.js frontend
-    credentials: true, // Allow cookies (for refresh token)
+    origin:
+      env.NODE_ENV === "production" ? env.CLIENT_URL : "http://localhost:3000",
+    credentials: true, // Allow cookies
+    methods: ["GET", "POST", "PATCH", "DELETE", "PUT"], // Allowed HTTP methods
+    allowedHeaders: ["Content-Type", "Authorization", "x-refresh-token"], // Allowed headers
   }),
 );
 
-// app.use(mongoSanitize());                  // Strip MongoDB operators from user input
+// Global Rate Limiting
+app.use(globalLimiter);
 
 // Authentication Middleware
 app.use(passport.initialize()); // No sessions — we use JWT
@@ -36,8 +56,15 @@ app.use(express.json({ limit: "10mb" })); // Parse JSON bodies
 app.use(express.urlencoded({ extended: true })); // Parse form bodies
 app.use(cookieParser()); // Parse cookies
 
-// Sanitize user input after request parsing. Express 5 exposes a read-only getter for
-// req.query, so we sanitize the existing object in place instead of reassigning it.
+// NoSQL Injection Prevention
+// Strips $ and . from user input keys — prevents MongoDB operator injection
+// app.use(mongoSanitize({
+//   replaceWith: '_',    // Replace with _ instead of just removing
+//   onSanitizeError: (req, res) => {
+//     res.status(400).json({ success: false, message: 'Invalid characters in request' });
+//   },
+// }));
+
 app.use((req, res, next) => {
   ["body", "params", "query"].forEach((key) => {
     if (req[key] && typeof req[key] === "object") {
@@ -76,9 +103,7 @@ app.use("/api/offers", offerRoutes);
 app.use("/api/conversations", chatRoutes);
 app.use("/api/search", searchRoutes);
 app.use("/api/notifications", notificationRoutes);
-
-// More routes will be added here each sprint:
-// app.use('/api/admin',         adminRoutes);
+app.use("/api/admin", adminRoutes);
 
 // 404 Handler
 app.use((req, res) => {

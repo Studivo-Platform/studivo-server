@@ -2,7 +2,7 @@ const { Router }   = require('express');
 const requestController  = require('../controllers/request.controller');
 const { verifyJWT }    = require('../middleware/auth.middleware');
 const { requireRole }  = require('../middleware/role.middleware');
-const { validate }     = require('../middleware/validate.middleware');
+const { validate, validateQuery } = require('../middleware/validate.middleware');
 const { aiLimiter }    = require('../middleware/rateLimit.middleware');
 const { createRequestSchema, listRequestsSchema } = require('../validators/request.validator');
 
@@ -18,7 +18,7 @@ router.post('/', requireRole('student'), aiLimiter, validate(createRequestSchema
 router.get('/my', requireRole('student'), requestController.getMyRequests);
 
 // Seller: browse open requests (filtered by category)
-router.get('/', requireRole('seller', 'admin'), requestController.getOpenRequests);
+router.get('/', requireRole('seller', 'admin'), validateQuery(listRequestsSchema), requestController.getOpenRequests);
 
 // Both: view single request details
 router.get('/:id', requestController.getById);
