@@ -8,7 +8,7 @@ const cookieParser = require("cookie-parser");
 const { env } = require("./src/config/env");
 const passport = require("./src/config/passport");
 const { errorHandler } = require("./src/middleware/error.middleware");
-const { globalLimiter } = require('./src/middleware/rateLimit.middleware');
+const { globalLimiter } = require("./src/middleware/rateLimit.middleware");
 
 // Routes
 const authRoutes = require("./src/routes/auth.routes");
@@ -17,30 +17,33 @@ const offerRoutes = require("./src/routes/offer.routes");
 const chatRoutes = require("./src/routes/chat.routes");
 const searchRoutes = require("./src/routes/search.routes");
 const notificationRoutes = require("./src/routes/notification.routes");
-const adminRoutes        = require('./src/routes/admin.routes');
+const adminRoutes = require("./src/routes/admin.routes");
 
 const app = express();
 
 // Security Middleware
 // Security Headers
-// app.use(helmet({
-//   crossOriginEmbedderPolicy: false,   // Allow Cloudinary images to load
-//   contentSecurityPolicy: {
-//     directives: {
-//       defaultSrc: ["'self'"],
-//       imgSrc:     ["'self'", 'data:', 'res.cloudinary.com'],
-//       connectSrc: ["'self'", env.CLIENT_URL],
-//     },
-//   },
-// }));
+app.use(helmet({
+  crossOriginEmbedderPolicy: false,   // Allow Cloudinary images to load
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      imgSrc:     ["'self'", 'data:', 'res.cloudinary.com'],
+      connectSrc: ["'self'", env.CLIENT_URL],
+    },
+  },
+}));
 
 // CORS
-app.use(cors({
-  origin:      env.NODE_ENV === 'production' ? env.CLIENT_URL : 'http://localhost:3000',  
-  credentials: true,  // Allow cookies
-  methods:     ['GET', 'POST', 'PATCH', 'DELETE', 'PUT'], // Allowed HTTP methods
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-refresh-token'], // Allowed headers
-}));
+app.use(
+  cors({
+    origin:
+      env.NODE_ENV === "production" ? env.CLIENT_URL : "http://localhost:3000",
+    credentials: true, // Allow cookies
+    methods: ["GET", "POST", "PATCH", "DELETE", "PUT"], // Allowed HTTP methods
+    allowedHeaders: ["Content-Type", "Authorization", "x-refresh-token"], // Allowed headers
+  }),
+);
 
 // Global Rate Limiting
 app.use(globalLimiter);
@@ -100,7 +103,7 @@ app.use("/api/offers", offerRoutes);
 app.use("/api/conversations", chatRoutes);
 app.use("/api/search", searchRoutes);
 app.use("/api/notifications", notificationRoutes);
-app.use('/api/admin',         adminRoutes);
+app.use("/api/admin", adminRoutes);
 
 // 404 Handler
 app.use((req, res) => {
