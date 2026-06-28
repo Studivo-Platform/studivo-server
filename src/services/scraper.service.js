@@ -22,6 +22,19 @@ const normalizePrice = (value) => {
   return cleaned ? parseInt(cleaned, 10) : null;
 };
 
+const normalizeKeywords = (keywords) =>
+  Array.isArray(keywords)
+    ? keywords.join(' ')
+    : String(keywords || '');
+
+const formatKeywords = (keywords, separator = ' ') => {
+  const text = Array.isArray(keywords)
+    ? keywords.join(' ')
+    : String(keywords ?? '');
+
+  return text.trim().replace(/\s+/g, separator);
+};
+
 const toAbsoluteUrl = (href, base) => {
   if (!href) return '';
   try {
@@ -54,6 +67,13 @@ const scrapeSite = async (url, scraper, source, baseUrl = url) => {
       timeout: DEFAULT_TIMEOUT_MS,
     });
 
+    console.log({
+      source,
+      status: response?.status(),
+      finalUrl: page.url(),
+      title: await page.title(),
+    });
+
     if (!response || response.status() >= 400) {
       throw new Error(`Navigation failed with status ${response?.status() || 'unknown'}`);
     }
@@ -76,9 +96,10 @@ const scrapeSite = async (url, scraper, source, baseUrl = url) => {
 };
 
 const scrapeOLX = async (keywords, category) => {
-  const query = encodeURIComponent(keywords);
-  const url = `https://www.olx.com.eg/items/q-${query}`;
-
+  const query = encodeURIComponent(formatKeywords(keywords, '-'));
+  const baseUrl = 'https://www.dubizzle.com.eg';
+  const url = `${baseUrl}/ads/q-${query}`;
+  
   return scrapeSite(
     url,
     async (page) => page.evaluate(() => {
@@ -90,14 +111,15 @@ const scrapeOLX = async (keywords, category) => {
         imageUrl: item.querySelector('img')?.src,
       }));
     }),
-    'olx',
+    'dubizzle olx',
+    baseUrl,
   );
 };
 
 const scrapeAqar = async (keywords) => {
-  const baseUrl = 'https://aqar.finderr.com';
-  const url = `${baseUrl}/?q=${encodeURIComponent(keywords)}`;
-
+  const baseUrl = 'https://aqarmap.com.eg';
+  const url = `${baseUrl}/?q=${encodeURIComponent(normalizeKeywords(keywords))}`;
+  
   return scrapeSite(
     url,
     async (page) => page.evaluate(() => {
@@ -115,9 +137,10 @@ const scrapeAqar = async (keywords) => {
 };
 
 const scrapeBtech = async (keywords) => {
-  const baseUrl = 'https://www.btech.com.eg';
-  const url = `${baseUrl}/catalogsearch/result/?q=${encodeURIComponent(keywords)}`;
-
+  const query = formatKeywords(keywords, '+');
+  const baseUrl = 'https://btech.com';
+  const url = `${baseUrl}/s?q=${query}`;
+  
   return scrapeSite(
     url,
     async (page) => page.evaluate(() => {

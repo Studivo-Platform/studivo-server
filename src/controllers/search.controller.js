@@ -97,7 +97,7 @@ const search = asyncHandler(async (req, res) => {
     // Build parsedData-like object from search query for affiliate service
     const searchContext = {
       category: category || 'other',
-      keywords: q.split(' ').filter((w) => w.length > 2),
+      keywords: q.split(/\s+/).filter((w) => w.length > 2),
       budget:   { max: maxPrice || null, min: minPrice || null, currency: 'EGP' },
     };
 
@@ -135,7 +135,7 @@ const searchExternal = asyncHandler(async (req, res) => {
 
   const searchContext = {
     category: category || 'other',
-    keywords: q.split(' ').filter((w) => w.length > 2),
+    keywords: q.split(/\s+/).filter((w) => w.length > 2),
     budget:   { max: maxPrice || null, currency: 'EGP' },
   };
 
@@ -152,11 +152,11 @@ const searchExternal = asyncHandler(async (req, res) => {
   const scrapers = [
     searchAmazon(searchContext),
     searchNoon(searchContext),
-    scrapeOLX(keywords, category),
+    scrapeOLX(searchContext.keywords, searchContext.category),
   ];
 
-  if (category === 'housing')     scrapers.push(scrapeAqar(keywords));
-  if (category === 'electronics') scrapers.push(scrapeBtech(keywords));
+  if (category === 'housing')     scrapers.push(scrapeAqar(searchContext.keywords));
+  if (category === 'electronics') scrapers.push(scrapeBtech(searchContext.keywords));
 
   const allResults = (await Promise.allSettled(scrapers))
     .filter((r) => r.status === 'fulfilled')
