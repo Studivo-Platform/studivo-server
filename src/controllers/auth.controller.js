@@ -6,6 +6,7 @@ const { ApiResponse }           = require('../utils/ApiResponse');
 const { asyncHandler }          = require('../utils/asyncHandler');
 const { sendVerificationEmail, sendPasswordResetEmail } = require('../services/email.service');
 const authService               = require('../services/auth.service');
+const userRepo                  = require('../repositories/user.repository');
 
 // register
 const register = asyncHandler(async (req, res) => {
@@ -188,6 +189,14 @@ const logout = asyncHandler(async (req, res) => {
 const getMe = asyncHandler(async (req, res) => {
     // req.user is set by auth.middleware.js
     return res.json(new ApiResponse(200, req.user));
+});
+
+// updateMe
+const updateMe = asyncHandler(async (req, res) => {
+    // req.user is set by auth.middleware.js
+    const user = req.user;
+    const updated = await userRepo.update(user._id, req.body);
+    return res.json(new ApiResponse(200, updated, 'User updated successfully'));
 });
 
 // googleCallback — called by passport after Google redirects back
