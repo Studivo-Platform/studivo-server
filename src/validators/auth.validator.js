@@ -73,13 +73,37 @@ const resetPasswordSchema = z
     message: 'Passwords do not match',
     path: ['confirmPassword'],
   });
-
-const completeProfileSchema = z.object({
-  role: z.enum(["student", "seller"], {
-    errorMap: () => ({ message: "Role must be student or seller" }),
-  }),
-  profileCompletionToken: z.string().min(1).optional(),
-});
+  
+  const completeProfileSchema = z.object({
+    role: z.enum(["student", "seller"], {
+      errorMap: () => ({ message: "Role must be student or seller" }),
+    }),
+    profileCompletionToken: z.string().min(1).optional(),
+  });
+  
+  const updateMeSchema = z
+  .object({
+    name: z.string().trim().optional(),
+    // email: z.string().email().toLowerCase().optional(),
+    university: z.string().trim().optional(),
+    phone: z.string().trim().optional(),
+  })
+  .partial();
+  
+  const changePasswordSchema = z.object({
+    currentPassword: z.string().min(1, 'Current password is required'),
+    newPassword: z
+      .string()
+      .min(8, 'New password must be at least 8 characters')
+      .regex(
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+        'Password must contain uppercase, lowercase, and number',
+      ),
+    confirmPassword: z.string().min(8, 'Confirm password is required'),
+  }).refine((d) => d.newPassword === d.confirmPassword, {
+    message: 'Passwords do not match',
+    path: ['confirmPassword'],
+  });
 
 module.exports = {
   registerSchema,
@@ -87,4 +111,6 @@ module.exports = {
   forgotPasswordSchema,
   resetPasswordSchema,
   completeProfileSchema,
+  updateMeSchema,
+  changePasswordSchema
 };

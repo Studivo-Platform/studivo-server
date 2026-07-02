@@ -26,7 +26,7 @@ const envSchema = z.object({
 
   // Gemini AI
   GEMINI_API_KEY: z.string().startsWith('AQ.Ab8RN6', { message: 'GEMINI_API_KEY must start with AQ.Ab8RN6' }),
-  GEMINI_MODEL:   z.string().default('gemini-1.5-flash'),
+  GEMINI_MODEL:   z.string().default('gemini-3.5-flash'),
   AI_CACHE_TTL:   z.string().default('86400').transform(Number),
 
   // Cloudinary

@@ -4,11 +4,14 @@ const authController    = require('../controllers/auth.controller');
 const { validate }      = require('../middleware/validate.middleware');
 const { verifyJWT }     = require('../middleware/auth.middleware');
 const { authLimiter }   = require('../middleware/rateLimit.middleware');
+const { uploadProfileImage } = require('../middleware/upload.middleware');
 const { registerSchema,
         loginSchema,
         forgotPasswordSchema,
         resetPasswordSchema,
-        completeProfileSchema } = require('../validators/auth.validator');
+        completeProfileSchema,
+        updateMeSchema,
+        changePasswordSchema } = require('../validators/auth.validator');
 
 const router = Router();
 
@@ -24,6 +27,9 @@ router.patch('/reset-password', validate(resetPasswordSchema), authController.re
 // Protected routes (requires valid JWT)
 router.post('/logout',  verifyJWT, authController.logout);
 router.get( '/me',      verifyJWT, authController.getMe);
+router.patch('/profile',     verifyJWT,  validate(updateMeSchema), authController.updateMe);
+router.post('/upload-avatar', verifyJWT, uploadProfileImage, authController.uploadAvatar);
+router.patch('/change-password', verifyJWT, validate(changePasswordSchema), authController.changePassword);
 
 // Step 1: Redirect user to Google login page
 // Scope: we request email and profile (name + photo)

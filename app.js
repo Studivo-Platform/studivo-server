@@ -1,10 +1,11 @@
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
+const fs = require("fs");
 const morgan = require("morgan");
 const mongoSanitize = require("express-mongo-sanitize");
 const cookieParser = require("cookie-parser");
-
+const path = require('path');
 const { env } = require("./src/config/env");
 const passport = require("./src/config/passport");
 const { errorHandler } = require("./src/middleware/error.middleware");
@@ -76,8 +77,12 @@ app.use((req, res, next) => {
 });
 
 // Logging
-if (env.NODE_ENV === "development") {
-  app.use(morgan("dev")); // Colorful request logs in development
+const accessLogStream = fs.createWriteStream(path.join(__dirname, '/logs/access.log'), { flags: 'a' });
+if(process.env.NODE_ENV === 'development') {
+  app.use(morgan('dev', { stream: accessLogStream }));
+}
+else {
+  app.use(morgan('combined', { stream: accessLogStream }));
 }
 
 // Make Socket.IO accessible via req.io in all controllers

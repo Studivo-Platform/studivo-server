@@ -26,7 +26,7 @@ const verifyJWT = asyncHandler(async (req, res, next) => {
     }
 
     // Fetch fresh user from DB (catches deactivated accounts mid-session)
-    const user = await User.findById(decoded.userId);
+    const user = await User.findById(decoded.userId).select('+password +refreshTokens');
 
     if (!user)            throw new ApiError(401, 'User no longer exists');
     if (!user.isActive)   throw new ApiError(403, 'Account has been deactivated');

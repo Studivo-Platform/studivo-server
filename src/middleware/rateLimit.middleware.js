@@ -26,7 +26,7 @@ const aiLimiter = rateLimit({
 // Extra strict for auth endpoints (prevent brute force)
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max:      20,              // 20 login attempts per window
+    max:      10,              // 10 login attempts per window
     message: {
         success: false,
         message: 'Too many authentication attempts. Please try again in 15 minutes.',

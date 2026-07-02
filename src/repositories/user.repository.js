@@ -51,4 +51,5 @@ const update = async (userId, data) => {
     .select('-password -refreshTokens -verificationToken');
 };
 
+
 module.exports = { findByEmail, findById, findAll, setActive, update };

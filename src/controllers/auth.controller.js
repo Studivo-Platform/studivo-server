@@ -6,6 +6,7 @@ const { ApiResponse }           = require('../utils/ApiResponse');
 const { asyncHandler }          = require('../utils/asyncHandler');
 const { sendVerificationEmail, sendPasswordResetEmail } = require('../services/email.service');
 const authService               = require('../services/auth.service');
+const cloudinaryService         = require("../services/cloudinary.service");
 const userRepo                  = require('../repositories/user.repository');
 
 // register
@@ -18,7 +19,7 @@ const register = asyncHandler(async (req, res) => {
         throw new ApiError(409, 'An account with this email already exists');
     }
 
-  // Generate email verification token
+    // Generate email verification token
     const verificationToken = crypto.randomBytes(32).toString('hex');
     const hashedToken = crypto.createHash('sha256')
     .update(verificationToken).digest('hex');
@@ -199,6 +200,33 @@ const updateMe = asyncHandler(async (req, res) => {
     return res.json(new ApiResponse(200, updated, 'User updated successfully'));
 });
 
+// uploadProfileImage
+const uploadAvatar = asyncHandler(async (req, res) => {
+    // req.user is set by auth.middleware.js
+    const user = req.user;
+    if (!req.file) throw new ApiError(400, 'No image file uploaded');
+
+    const uploadedImageProfile = await cloudinaryService.uploadImage(req.file?? null, {
+        folder: 'studivo/profile' });
+
+    if (uploadedImageProfile)
+        user.profileImage = uploadedImageProfile.url;
+    const updated = await userRepo.update(user._id, { profileImage: user.profileImage });
+    return res.json(new ApiResponse(200, updated, 'Profile image updated successfully'));
+});
+
+// changePassword
+const changePassword = asyncHandler(async (req, res) => {
+    // req.user is set by auth.middleware.js
+    const user = req.user;
+    if(!(await user.comparePassword(req.body.currentPassword))) {
+        throw new ApiError(400, 'Current password is incorrect');
+    }
+    user.password = req.body.newPassword;
+    user.save();
+    return res.json(new ApiResponse(200, updated, 'Password changed successfully'));
+});
+
 // googleCallback — called by passport after Google redirects back
 const googleCallback = asyncHandler(async (req, res) => {
     const user = req.user;
@@ -252,6 +280,9 @@ module.exports = {
     forgotPassword,
     logout,
     getMe,
+    updateMe,
+    uploadAvatar,
+    changePassword,
     googleCallback,
     completeProfile,
 };
