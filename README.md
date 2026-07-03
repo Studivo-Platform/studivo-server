@@ -1,6 +1,8 @@
-# Studivo
+<p align="center">
+  <img height="300" alt="studivo" src="https://github.com/user-attachments/assets/e3b98a26-4783-4b50-9157-402ff050a98a" />
+</p>
 
-![Studivo Banner](https://via.placeholder.com/1200x320?text=Studivo)
+# Studivo
 
 ![Node.js](https://img.shields.io/badge/Node.js-20.x-339933?logo=node.js&logoColor=white) ![Express](https://img.shields.io/badge/Express-5.x-000000?logo=express&logoColor=white) ![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-47A248?logo=mongodb&logoColor=white) ![Socket.IO](https://img.shields.io/badge/Socket.IO-4.x-010101?logo=socket.io&logoColor=white) ![Redis](https://img.shields.io/badge/Redis-BullMQ-DC382D?logo=redis&logoColor=white) ![Gemini](https://img.shields.io/badge/Google%20Gemini-AI-8E75FF) ![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=next.js&logoColor=white) ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white) ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 
